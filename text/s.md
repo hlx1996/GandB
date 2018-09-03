@@ -28,3 +28,4 @@ We aim to solve the pose to pose planning problem. During the flying, the uav sh
 * bspline basic. write code of b-spline
 * Minimum snap(jerk) in bspline form.
 * ESDF tool and gradient method for moving a point.
+* move control point in the gradient of jerk.
