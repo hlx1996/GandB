@@ -1,0 +1,5 @@
+<launch>
+  <node name="random" pkg="grad_spline" type="random" output="screen">
+  </node>
+</launch>
+ 

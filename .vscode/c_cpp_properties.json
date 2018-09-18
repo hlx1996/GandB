@@ -4,7 +4,9 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/opt/ros/kinetic/include"
+                "/opt/ros/kinetic/include",
+                "/usr/include/eigen3",
+                "/home/bzhouai/workspaces/plan_ws/src/grad_spline/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

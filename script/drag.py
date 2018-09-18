@@ -71,29 +71,58 @@ def drawBSpline():
 
 
 def onPress(event):
+    '''
+    If double click, add that point into the pts and redraw the bspline
+    else move the clicked point 
+    '''
     print('Press: button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
           (event.button, event.x, event.y, event.xdata, event.ydata))
 
-    # get the closest point of pressed position, 
-    x, y = event.xdata, event.ydata
-    min_dst = 1000
-    min_id = 0
-    global pts
-    for i in range(len(pts[0])):
-        dst = np.sqrt((x-pts[0][i])**2+(y-pts[1][i])**2)
-        if dst < min_dst:
-            min_dst = dst
-            min_id = i
-    # print pts[0][min_id], pts[1][min_id]
-    
-    # The closest point is close enough?
-    global move_id, move_pos
-    if min_dst < 0.5:
-        move_id = min_id
-        move_pos = [x, y]
-        print move_id, move_pos
+    if event.dblclick:
+        print 'double click, add point into pts'
+        clx, cly = event.xdata, event.ydata
+        global pts
+        for i in range(len(pts[0])):
+            if pts[0][i] > clx:
+                pts[0].insert(i,clx)
+                pts[1].insert(i,cly)
+                break
+
+        'redraw'
+        x, y, cx, cy = drawBSpline()
+        ax.clear()
+        ax.axis([0,10,0,10])
+        ax.plot(pts[0],pts[1],'ro')
+        ax.plot(pts[0],pts[1],'g')
+        ax.plot(x, y)
+        ax.plot(cx, cy, 'yo')
+        for i in range(len(obs)):
+            ax.plot(obs[i][0],obs[i][1],'r')
+        plt.draw()
+
+
+
     else:
-        print 'no point press'
+        # get the closest point of pressed position, 
+        x, y = event.xdata, event.ydata
+        min_dst = 1000
+        min_id = 0
+        global pts
+        for i in range(len(pts[0])):
+            dst = np.sqrt((x-pts[0][i])**2+(y-pts[1][i])**2)
+            if dst < min_dst:
+                min_dst = dst
+                min_id = i
+        # print pts[0][min_id], pts[1][min_id]
+        
+        # The closest point is close enough?
+        global move_id, move_pos
+        if min_dst < 0.5:
+            move_id = min_id
+            move_pos = [x, y]
+            print move_id, move_pos
+        else:
+            print 'no point press'
     
 def onMotion(event):
     # print('Motion: x=%d, y=%d, xdata=%f, ydata=%f' %

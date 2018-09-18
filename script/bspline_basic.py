@@ -24,7 +24,7 @@ def test():
 def calculateBasic():
     # basic n, p, m
     p = 4
-    n = 20
+    n = 50
     m = n + p + 1
 
     # compute knots vector
