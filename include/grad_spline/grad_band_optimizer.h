@@ -16,10 +16,19 @@ class GradBandOptimizer
     sdf_tools::SignedDistanceField* sdf;
     double resolution;
     Eigen::MatrixXd points;
+    double alpha, beta, lamda, dist0, alp;
+
+    void getDistanceAndGradient(Eigen::Vector3d& pos, double& dist, Eigen::Vector3d& grad);
 
   public:
     GradBandOptimizer(Eigen::MatrixXd points, sdf_tools::SignedDistanceField* sdf, double res);
     ~GradBandOptimizer();
+
+    // get optimized points
+    Eigen::MatrixXd getPoints();
+
+    // set algorithm parameters
+    void setParameter(double alpha, double beta, double lamda, double dist0);
 
     // execute main operation here
     void optimize();

@@ -27,6 +27,12 @@ int main(int argc, char** argv)
     srand(ros::Time::now().toSec());
     ros::Duration(0.5).sleep();
 
+    // parameter
+    double obs_th, min_step, max_step;
+    ros::param::get("/random/obs_th", obs_th);
+    ros::param::get("/random/min_step", min_step);
+    ros::param::get("/random/max_step", max_step);
+
     // -------------------randomly generate some way points-------------------
     Eigen::Vector3d start, end;
     start(0) = start(1) = -4.0;
@@ -36,7 +42,6 @@ int main(int argc, char** argv)
     vector<Eigen::Vector3d> way_points;
     way_points.push_back(start);
 
-    double min_step = 1.5, max_step = 2.0;
     double dist = (start - end).norm();
     for (int i = 0; dist > min_step;)
     {
@@ -87,6 +92,7 @@ int main(int argc, char** argv)
     int obs_num = 50;
     vector<Eigen::Vector3d> obstacles;
     cout << "----------------------Add obstacles to map!---------------" << endl;
+
     int fail_num = 0;
     for (int i = 0; i < obs_num;)
     {
@@ -97,11 +103,11 @@ int main(int argc, char** argv)
         pt(2) = 2.0;
 
         // ensure that obstacle is far enough from start and end
-        if ((pt - start).norm() < 2.0 || (pt - end).norm() < 2.0)
+        if ((pt - start).norm() < 1.0 || (pt - end).norm() < 1.0)
             continue;
 
         // ensure that obstacle is far enough from waypoint
-        double dist_thresh = 1.1;
+        double dist_thresh = 0.7;
         double min_dist = 1000.0;
         for (int j = 0; j < way_points.size(); ++j)
         {
@@ -121,7 +127,7 @@ int main(int argc, char** argv)
             else
             {
                 min_dist = 1000.0;
-                dist_thresh = 1.2;
+                dist_thresh = obs_th;
                 for (int j = 0; j < obstacles.size(); ++j)
                 {
                     double dist = (obstacles[j] - pt).norm();
@@ -197,8 +203,30 @@ int main(int argc, char** argv)
         points(i, 2) = way_points.at(i)(2);
     }
 
+    double alpha, beta, lamda, dist0, st;
+    int num;
+    ros::param::get("/random/alpha", alpha);
+    ros::param::get("/random/beta", beta);
+    ros::param::get("/random/lamda", lamda);
+    ros::param::get("/random/dist0", dist0);
+
+    ros::param::get("/random/opti_num", num);
+    ros::param::get("/random/sleep", st);
+
     GradBandOptimizer optimizer(points, &sdf, resolution);
-    optimizer.optimize();
+    optimizer.setParameter(alpha, beta, lamda, dist0);
+    double time1 = 0.0;
+    for (int i = 0; i < num; ++i)
+    {
+        ros::Duration(st).sleep();
+        ros::Time t1 = ros::Time::now();
+        optimizer.optimize();
+        ros::Time t2 = ros::Time::now();
+        time1 += t2.toSec() - t1.toSec();
+        cout << "one time: " << t2 - t1 << " total time1:" << time1 << endl;
+        Eigen::MatrixXd pts = optimizer.getPoints();
+        visualizePoints(pts);
+    }
 
     return 0;
 }
