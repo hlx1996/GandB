@@ -78,6 +78,10 @@ void GradBandOptimizer::optimize()
         Eigen::Vector3d dq = alp * fi;
         delta_qs.push_back(dq);
 
+        // test applying the dq in sequence ----(1)
+        points.row(i) += dq.transpose();
+
+
         // cout << i
         //      << "point \n"
              //      << "q1:\n"
@@ -91,14 +95,14 @@ void GradBandOptimizer::optimize()
             //  << dq.transpose() << endl;
     }
 
-    // apply delta q to every points
-    for (int i = 0; i < points.rows(); ++i)
-    {
-        if (i == 0 || i == points.rows() - 1)
-            continue;
+    // apply delta q to every points in the same time, on the contrary to (1)
+    // for (int i = 0; i < points.rows(); ++i)
+    // {
+    //     if (i == 0 || i == points.rows() - 1)
+    //         continue;
 
-        points.row(i) += delta_qs[i - 1].transpose();
-    }
+    //     points.row(i) += delta_qs[i - 1].transpose();
+    // }
 
     // cout << "alp:" << alp << endl;
     alp *= beta;

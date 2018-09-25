@@ -15,8 +15,13 @@ move_id = None
 global move_pos
 move_pos = None
 
-global fig, ax
-fig, ax = plt.subplots()
+global fig, ax, ax0, ax1, ax2
+fig = plt.figure()
+ax = fig.add_subplot(221)
+ax0 = fig.add_subplot(222)
+ax1 = fig.add_subplot(223)
+ax2 = fig.add_subplot(224)
+
 
 def drawObs():
     '''
@@ -48,6 +53,7 @@ def drawObs():
 def drawBSpline():
     '''
     Return the whole bspline and control point as bx, by, cx, cy
+    Also return the velocity and acc and time as vx, vy, ax, ay, time
     '''
     global pts
     bspline = UniformBspline(pts)
@@ -55,19 +61,33 @@ def drawBSpline():
     u = rg[0]
 
     bx, by = [], []
+    vx, vy = [], []
+    acx, acy = [], []
+    time = []
     while u<rg[1]:
-        val = bspline.evaluate(u)
+        val = bspline.evaluate(u,0)
         bx.append(val[0])
         by.append(val[1])
+
+        val = bspline.evaluate(u,1)
+        vx.append(val[0])
+        vy.append(val[1])
+
+        val = bspline.evaluate(u,2)
+        acx.append(val[0])
+        acy.append(val[1])
+
+        time.append(u)
+
         u += 0.01
 
     cx, cy = [], []
     for i in range(rg[0]+1,rg[1]):
-        val = bspline.evaluate(i)
+        val = bspline.evaluate(i,0)
         cx.append(val[0])
         cy.append(val[1])
 
-    return bx, by, cx, cy
+    return bx, by, cx, cy, vx, vy, acx, acy, time
 
 
 def onPress(event):
@@ -89,8 +109,13 @@ def onPress(event):
                 break
 
         'redraw'
-        x, y, cx, cy = drawBSpline()
+        x, y, cx, cy, vx, vy, acx, acy, time = drawBSpline()
+        global ax0, ax1, ax2
         ax.clear()
+        ax0.clear()
+        ax1.clear()
+        ax2.clear()
+
         ax.axis([0,10,0,10])
         ax.plot(pts[0],pts[1],'ro')
         ax.plot(pts[0],pts[1],'g')
@@ -98,6 +123,13 @@ def onPress(event):
         ax.plot(cx, cy, 'yo')
         for i in range(len(obs)):
             ax.plot(obs[i][0],obs[i][1],'r')
+
+        ax0.plot(time, x,'r')
+        ax0.plot(time, y,'g')
+        ax1.plot(time, vx,'r')
+        ax1.plot(time, vy,'g')
+        ax2.plot(time, acx,'r')
+        ax2.plot(time, acy,'g')
         plt.draw()
 
 
@@ -160,8 +192,14 @@ def onRelease(event):
     move_id = None
     move_pos = None
 
-    x, y, cx, cy = drawBSpline()
+    x, y, cx, cy, vx, vy, acx, acy, time = drawBSpline()
+
+    global ax0, ax1, ax2
     ax.clear()
+    ax0.clear()
+    ax1.clear()
+    ax2.clear()
+
     ax.axis([0,10,0,10])
     ax.plot(pts[0],pts[1],'ro')
     ax.plot(pts[0],pts[1],'g')
@@ -169,21 +207,35 @@ def onRelease(event):
     ax.plot(cx, cy, 'yo')
     for i in range(len(obs)):
         ax.plot(obs[i][0],obs[i][1],'r')
+
+    ax0.plot(time, x,'r')
+    ax0.plot(time, y,'g')
+    ax1.plot(time, vx,'r')
+    ax1.plot(time, vy,'g')
+    ax2.plot(time, acx,'r')
+    ax2.plot(time, acy,'g')
     plt.draw()
 
 
 def main():
     
-    global fig, ax, obs
+    global fig, ax, obs, ax0, ax1, ax2
     ax.axis([0,10,0,10])
     ax.plot(pts[0],pts[1],'ro')
     ax.plot(pts[0],pts[1],'g')
-    x, y, cx, cy = drawBSpline()
+    x, y, cx, cy, vx, vy, acx, acy, time = drawBSpline()
     ax.plot(x, y)
     ax.plot(cx, cy, 'yo')
     drawObs()
     for i in range(len(obs)):
         ax.plot(obs[i][0],obs[i][1],'r')
+
+    ax0.plot(time, x,'r')
+    ax0.plot(time, y,'g')
+    ax1.plot(time, vx,'r')
+    ax1.plot(time, vy,'g')
+    ax2.plot(time, acx,'r')
+    ax2.plot(time, acy,'g')
 
     cid1 = fig.canvas.mpl_connect('button_press_event', onPress)
     cid2 = fig.canvas.mpl_connect('button_release_event', onRelease)

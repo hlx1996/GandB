@@ -9,7 +9,7 @@ Its p is fixed, n and m will be computed accordingly.
 
     It should be able to return a list [u_p, u_m-p] indicating the effective region.
 
-    Then given a 'u' between [u_p, u_m-p], it should return the value of that point.
+    Then given a 'u' between [u_p, u_m-p], it should return the value of that point, including position, velocity and acceleration
 '''
 
 class UniformBspline:
@@ -50,10 +50,11 @@ class UniformBspline:
         # print uv
         return uv
 
-    def evaluate(self, u):
+    def evaluate(self, u, order):
         '''
         decide whether u lie between [up, u_m-p]
         return the value in the form of [x, y]
+        order 0 for pos, 1 for vel, 2 for acc
         '''
         if u < self.p or u > (self.m-self.p):
             return
@@ -65,8 +66,18 @@ class UniformBspline:
         s = int(math.floor(u-self.p))
 
         for i in range(self.p+1):
-            nip = uv * np.transpose(np.matrix(self.coe[s][i]))
-            print s+i
+            '''
+            transform the coefficient if order is larger than 0, T matrix transform the
+            coefficent of pos to vel
+            '''
+            tmat = np.matrix([[0,0,0,0,0],[4,0,0,0,0],[0,3,0,0,0],[0,0,2,0,0],[0,0,0,1,0]])
+            nip = 0.0
+            if order == 0:
+                nip = uv * np.transpose(np.matrix(self.coe[s][i]))
+            elif order == 1:
+                nip = uv *tmat* np.transpose(np.matrix(self.coe[s][i]))
+            elif order == 2:
+                nip = uv *tmat*tmat* np.transpose(np.matrix(self.coe[s][i]))
             xu += self.control_points[0][s+i] * nip
             yu += self.control_points[1][s+i] * nip
         val = [float(xu),float(yu)]
