@@ -33,15 +33,19 @@ int main(int argc, char** argv)
     ros::param::get("/random/min_step", min_step);
     ros::param::get("/random/max_step", max_step);
 
-    double alpha, beta, lamda, dist0, st;
-    int num;
+    double alpha, beta, lamda, dist0, st, scale;
+    int num, point_opti_num, algorithm, solver;
     ros::param::get("/random/alpha", alpha);
     ros::param::get("/random/beta", beta);
     ros::param::get("/random/lamda", lamda);
     ros::param::get("/random/dist0", dist0);
 
     ros::param::get("/random/opti_num", num);
+    ros::param::get("/random/point_opti_num", point_opti_num);
+    ros::param::get("/random/algorithm", algorithm);
     ros::param::get("/random/sleep", st);
+    ros::param::get("/random/scale", scale);
+    ros::param::get("/random/solver", solver);
 
     while (ros::ok())
     {
@@ -217,13 +221,16 @@ int main(int argc, char** argv)
         }
 
         GradBandOptimizer optimizer(points, &sdf, resolution);
-        optimizer.setParameter(alpha, beta, lamda, dist0);
+        optimizer.setParameter(alpha, beta, lamda, dist0, scale, point_opti_num, algorithm);
         double time1 = 0.0;
         for (int i = 0; i < num; ++i)
         {
             ros::Duration(st).sleep();
             ros::Time t1 = ros::Time::now();
-            optimizer.optimize();
+            if (solver == 1)
+                optimizer.optimize();
+            else if (solver == 2)
+                optimizer.optimize2();
             ros::Time t2 = ros::Time::now();
             time1 += t2.toSec() - t1.toSec();
             cout << "one time: " << t2 - t1 << " total time1:" << time1 << endl;

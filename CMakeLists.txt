@@ -15,7 +15,8 @@ roscpp
 std_msgs
 )
 
-find_package(Eigen3 REQUIRED)
+find_package(Eigen3 REQUIRED
+NLopt)
 
 catkin_package()
 include_directories(
@@ -27,4 +28,5 @@ include_directories(
 )
 
 add_executable(random src/example_random.cpp src/grad_band_optimizer.cpp)
-target_link_libraries(random ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/third_party/sdf_tools/lib/libsdf_tools.so)
+target_link_libraries(random ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/third_party/sdf_tools/lib/libsdf_tools.so
+${NLopt_LIBRARIES} /usr/local/lib/libnlopt.so)
