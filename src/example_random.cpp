@@ -231,6 +231,8 @@ int main(int argc, char** argv)
                 optimizer.optimize();
             else if (solver == 2)
                 optimizer.optimize2();
+            else if (solver == 3)
+                optimizer.optimize3();
             ros::Time t2 = ros::Time::now();
             time1 += t2.toSec() - t1.toSec();
             cout << "one time: " << t2 - t1 << " total time1:" << time1 << endl;
@@ -238,6 +240,7 @@ int main(int argc, char** argv)
             visualizePoints(pts);
         }
 
+        // break;
         ros::Duration(1.0).sleep();
     }
 

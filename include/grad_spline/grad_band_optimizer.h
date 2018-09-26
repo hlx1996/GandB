@@ -38,8 +38,10 @@ class GradBandOptimizer
     // execute main operation here
     // This function use hand-written optimization
     void optimize();
-    // This function use NLopt optimization solver
+    // This function use NLopt optimization solver, and optimize each point in sequence
     void optimize2();
+    // This function use NLopt optimization solver, and optimize all points in one time
+    void optimize3();
 
     // set signed distance field and resolution of it
     void setDistanceField(sdf_tools::SignedDistanceField* s, double res);
@@ -48,7 +50,8 @@ class GradBandOptimizer
     void setPoints(Eigen::MatrixXd points);
 
     // For using NLopt solver, we need a func()
-    static double costFunc(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
+    static double costFunc2(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
+    static double costFunc3(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
 };
 
 #endif
