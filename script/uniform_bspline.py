@@ -84,6 +84,7 @@ class UniformBspline:
 
         return val
 
+
 def main():
     pts = [ [1,2,3,4,5,6,7,8,9],
             [2,3,5,7,3,6,8,9,1]]

@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from uniform_bspline import UniformBspline
+from bspline import BSpline
 
 global pts
 pts = [ [1,2,3,4,5,6,7,8,9],
@@ -56,7 +57,8 @@ def drawBSpline():
     Also return the velocity and acc and time as vx, vy, ax, ay, time
     '''
     global pts
-    bspline = UniformBspline(pts)
+    # bspline = UniformBspline(pts)
+    bspline = BSpline(pts)
     rg = bspline.getRegion()
     u = rg[0]
 
@@ -65,17 +67,18 @@ def drawBSpline():
     acx, acy = [], []
     time = []
     while u<rg[1]:
-        val = bspline.evaluate(u,0)
+        # val = bspline.evaluate(u)
+        val = bspline.evaluateByMat(u)
         bx.append(val[0])
         by.append(val[1])
 
-        val = bspline.evaluate(u,1)
-        vx.append(val[0])
-        vy.append(val[1])
+        # val = bspline.evaluate(u,1)
+        # vx.append(val[0])
+        # vy.append(val[1])
 
-        val = bspline.evaluate(u,2)
-        acx.append(val[0])
-        acy.append(val[1])
+        # val = bspline.evaluate(u,2)
+        # acx.append(val[0])
+        # acy.append(val[1])
 
         time.append(u)
 
@@ -83,7 +86,8 @@ def drawBSpline():
 
     cx, cy = [], []
     for i in range(rg[0]+1,rg[1]):
-        val = bspline.evaluate(i,0)
+        # val = bspline.evaluate(i,0)
+        val = bspline.evaluateByMat(i)
         cx.append(val[0])
         cy.append(val[1])
 
@@ -126,10 +130,10 @@ def onPress(event):
 
         ax0.plot(time, x,'r')
         ax0.plot(time, y,'g')
-        ax1.plot(time, vx,'r')
-        ax1.plot(time, vy,'g')
-        ax2.plot(time, acx,'r')
-        ax2.plot(time, acy,'g')
+        # ax1.plot(time, vx,'r')
+        # ax1.plot(time, vy,'g')
+        # ax2.plot(time, acx,'r')
+        # ax2.plot(time, acy,'g')
         plt.draw()
 
 
@@ -210,10 +214,10 @@ def onRelease(event):
 
     ax0.plot(time, x,'r')
     ax0.plot(time, y,'g')
-    ax1.plot(time, vx,'r')
-    ax1.plot(time, vy,'g')
-    ax2.plot(time, acx,'r')
-    ax2.plot(time, acy,'g')
+    # ax1.plot(time, vx,'r')
+    # ax1.plot(time, vy,'g')
+    # ax2.plot(time, acx,'r')
+    # ax2.plot(time, acy,'g')
     plt.draw()
 
 
@@ -232,10 +236,10 @@ def main():
 
     ax0.plot(time, x,'r')
     ax0.plot(time, y,'g')
-    ax1.plot(time, vx,'r')
-    ax1.plot(time, vy,'g')
-    ax2.plot(time, acx,'r')
-    ax2.plot(time, acy,'g')
+    # ax1.plot(time, vx,'r')
+    # ax1.plot(time, vy,'g')
+    # ax2.plot(time, acx,'r')
+    # ax2.plot(time, acy,'g')
 
     cid1 = fig.canvas.mpl_connect('button_press_event', onPress)
     cid2 = fig.canvas.mpl_connect('button_release_event', onRelease)

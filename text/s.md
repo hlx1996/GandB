@@ -25,7 +25,9 @@ We aim to solve the pose to pose planning problem. During the flying, the uav sh
 * What is the ESDF(distance field) of densely cluttered environment look like, how to utilize it.
 
 ## Plan
-* Optimization version of this algorithm
 * Add the constrains of reachable set
+  - write in python the matrix representation of b-spline.
+  - write in python the velocity and acceleration, use the notion of matrix and new control points.
+  - transfer to C++ 
 * Spilt and merge of points
 * Kinodynamic search
