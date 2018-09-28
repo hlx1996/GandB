@@ -4,8 +4,8 @@ from uniform_bspline import UniformBspline
 from bspline import BSpline
 
 global pts
-pts = [ [1,2,3,4,5,6,7,8,9],
-        [2,3,5,7,3,6,8,9,1]]
+pts = [ [1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],
+        [2.0,3.0,5.0,7.0,3.0,6.0,8.0,9.0,1.0]]
 
 global obss
 obss = [[2,2],[3,3],[8,8],[9,5],[5,5],[7,3],[9,7]]
@@ -58,8 +58,10 @@ def drawBSpline():
     '''
     global pts
     # bspline = UniformBspline(pts)
-    bspline = BSpline(pts)
+    bspline = BSpline(pts,4)
     rg = bspline.getRegion()
+    d1 = bspline.getDerivative()
+    d2 = d1.getDerivative()
     u = rg[0]
 
     bx, by = [], []
@@ -73,12 +75,15 @@ def drawBSpline():
         by.append(val[1])
 
         # val = bspline.evaluate(u,1)
-        # vx.append(val[0])
-        # vy.append(val[1])
+        val = d1.evaluateByMat(u)
+        vx.append(val[0])
+        vy.append(val[1])
+
 
         # val = bspline.evaluate(u,2)
-        # acx.append(val[0])
-        # acy.append(val[1])
+        val = d2.evaluateByMat(u)
+        acx.append(val[0])
+        acy.append(val[1])
 
         time.append(u)
 
@@ -130,10 +135,10 @@ def onPress(event):
 
         ax0.plot(time, x,'r')
         ax0.plot(time, y,'g')
-        # ax1.plot(time, vx,'r')
-        # ax1.plot(time, vy,'g')
-        # ax2.plot(time, acx,'r')
-        # ax2.plot(time, acy,'g')
+        ax1.plot(time, vx,'r')
+        ax1.plot(time, vy,'g')
+        ax2.plot(time, acx,'r')
+        ax2.plot(time, acy,'g')
         plt.draw()
 
 
@@ -214,10 +219,10 @@ def onRelease(event):
 
     ax0.plot(time, x,'r')
     ax0.plot(time, y,'g')
-    # ax1.plot(time, vx,'r')
-    # ax1.plot(time, vy,'g')
-    # ax2.plot(time, acx,'r')
-    # ax2.plot(time, acy,'g')
+    ax1.plot(time, vx,'r')
+    ax1.plot(time, vy,'g')
+    ax2.plot(time, acx,'r')
+    ax2.plot(time, acy,'g')
     plt.draw()
 
 
@@ -236,10 +241,10 @@ def main():
 
     ax0.plot(time, x,'r')
     ax0.plot(time, y,'g')
-    # ax1.plot(time, vx,'r')
-    # ax1.plot(time, vy,'g')
-    # ax2.plot(time, acx,'r')
-    # ax2.plot(time, acy,'g')
+    ax1.plot(time, vx,'r')
+    ax1.plot(time, vy,'g')
+    ax2.plot(time, acx,'r')
+    ax2.plot(time, acy,'g')
 
     cid1 = fig.canvas.mpl_connect('button_press_event', onPress)
     cid2 = fig.canvas.mpl_connect('button_release_event', onRelease)
