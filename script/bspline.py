@@ -52,7 +52,7 @@ class BSpline:
 
         # print self.n, self.m
         # print self.control_points, len(self.control_points[0]) 
-        # print self.u, len(self.u)
+        print self.u, len(self.u)
 
         # The M matrix used for evaluation
         m5 = np.matrix([[1.0,11.0,11.0,1.0,0],[-4.0,-12.0,12.0,4.0,0],[6.0,-6.0,-6.0,6.0,0],[-4.0,12.0,-12.0,4.0,0],[1.0,-4.0,6.0,-4.0,1.0]])/(4.0*3.0*2)

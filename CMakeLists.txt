@@ -27,6 +27,9 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
 )
 
+add_executable(bspline src/bspline.cpp)
+target_link_libraries(bspline ${catkin_LIBRARIES})
+
 add_executable(random src/example_random.cpp src/grad_band_optimizer.cpp)
 target_link_libraries(random ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/third_party/sdf_tools/lib/libsdf_tools.so
 ${NLopt_LIBRARIES} /usr/local/lib/libnlopt.so)

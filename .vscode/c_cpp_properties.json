@@ -6,7 +6,8 @@
                 "${workspaceFolder}/**",
                 "/opt/ros/kinetic/include",
                 "/usr/include/eigen3",
-                "/home/bzhouai/workspaces/plan_ws/src/grad_spline/include"
+                "/home/bzhouai/workspaces/plan_ws/src/grad_spline/include",
+                "${workspaceFolder}/include/grad_spline"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
