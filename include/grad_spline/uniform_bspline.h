@@ -22,8 +22,12 @@ class UniformBspline
     ~UniformBspline();
 
     void getRegion(double& um, double& um_p);
+
     Eigen::Vector3d evaluate(double u);
+
     UniformBspline getDerivative();
+
+    Eigen::MatrixXd getDerivativeControlPoints();
 };
 
 // control points is a (n+1)x3 matrix
@@ -141,7 +145,7 @@ Eigen::Vector3d UniformBspline::evaluate(double u)
     return val;
 }
 
-UniformBspline UniformBspline::getDerivative()
+Eigen::MatrixXd UniformBspline::getDerivativeControlPoints()
 {
     // The derivative of a b-spline is also a b-spline, its order become p-1
     // control point Qi = p*(Pi+1-Pi)/(ui+p+1-ui+1)
@@ -150,6 +154,12 @@ UniformBspline UniformBspline::getDerivative()
     {
         ctp.row(i) = p * (control_points.row(i + 1) - control_points.row(i)) / (u(i + p + 1) - u(i + 1));
     }
+    return ctp;
+}
+
+UniformBspline UniformBspline::getDerivative()
+{
+    Eigen::MatrixXd ctp = this->getDerivativeControlPoints();
     UniformBspline derivative = UniformBspline(ctp, p - 1, false);
     return derivative;
 }

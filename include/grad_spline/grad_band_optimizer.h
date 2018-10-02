@@ -20,7 +20,16 @@ class GradBandOptimizer
     double resolution;
     Eigen::MatrixXd points;
     double alpha, beta, lamda, dist0, alp, scale;
-    int current_optimize_id, algorithm, point_opti_num;
+
+    // used for adding derivative constrains  
+    int current_optimize_id; //id range from 0 to (points.rows-2)
+    int current_axis; // axis is 0, 1, 2 for x, y, z;
+    int current_sign; // sign is +1, -1 for lesser and larger
+    int var_num; // number of variables to be optimized  
+
+    int algorithm;
+    int point_opti_num;
+
 
     void getDistanceAndGradient(Eigen::Vector3d& pos, double& dist, Eigen::Vector3d& grad);
 
@@ -52,6 +61,9 @@ class GradBandOptimizer
     // For using NLopt solver, we need a func()
     static double costFunc2(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
     static double costFunc3(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
+    static double velConstraint(const std::vector<double> &x, std::vector<double> &grad, void *data);
+    static double accConstraint(const std::vector<double> &x, std::vector<double> &grad, void *data);
+
 };
 
 #endif

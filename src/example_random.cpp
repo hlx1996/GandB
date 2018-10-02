@@ -9,6 +9,7 @@
 #include "sdf_tools/sdf.hpp"
 
 #include "grad_spline/grad_band_optimizer.h"
+#include "grad_spline/uniform_bspline.h"
 
 using namespace std;
 
@@ -238,10 +239,14 @@ int main(int argc, char** argv)
             cout << "one time: " << t2 - t1 << " total time1:" << time1 << endl;
             Eigen::MatrixXd pts = optimizer.getPoints();
             visualizePoints(pts);
+
+            // use the optimized points for bspline
+            UniformBspline bspline = UniformBspline(pts, 4);
+            displayTrajectory(bspline);
         }
 
         // break;
-        ros::Duration(1.0).sleep();
+        ros::Duration(2.0).sleep();
     }
 
     return 0;

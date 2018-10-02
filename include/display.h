@@ -3,9 +3,14 @@
 
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
+#include <nav_msgs/Path.h>
+
 #include <Eigen/Eigen>
+
 #include <vector>
 #include <stdlib.h>
+
+#include "grad_spline/uniform_bspline.h"
 
 using std::vector;
 
@@ -15,8 +20,6 @@ int point_num;
 ros::Publisher setpoint_pub;
 ros::Publisher traj_pub;
 ros::Publisher traj_point_pub;
-
-void getPositionFromCoeff(Eigen::Vector3d& pos, Eigen::MatrixXd coeff, int index, double time);
 
 // visualize initial waypoint
 void visualizeSetPoints(vector<Eigen::Vector3d> points)
@@ -80,140 +83,55 @@ void visualizePoints(Eigen::MatrixXd points)
         p.pose.orientation.y = 0;
         p.pose.orientation.z = 0;
 
-        p.scale.x = p.scale.y = p.scale.z = 0.2;
+        p.scale.x = p.scale.y = p.scale.z = 0.1;
 
         p.color.a = 1.0;
         p.color.r = cr;
         p.color.g = cg;
         p.color.b = cb;
 
-        p.lifetime = ros::Duration(2000.0);
+        p.lifetime = ros::Duration(10.0);
 
         setpoint_pub.publish(p);
-        ros::Duration(0.001).sleep();
+        ros::Duration(0.0001).sleep();
 
         // ROS_INFO_STREAM("publish set point");
     }
 }
 
-// use coefficient of polynomials to draw the trajectory
-void displayTrajectory(Eigen::MatrixXd coeff, bool animate)
+// use uniform bspline to draw trajectory
+void displayTrajectory(UniformBspline bspline)
 {
     nav_msgs::Path path;
     path.header.frame_id = "world";
     path.header.stamp = ros::Time::now();
 
-    // publish the whole trajectory
-    double _t;
-    for (int s = 0; s < (point_num - 1); s++)
+    // publish these point
+    double u1, u2;
+    bspline.getRegion(u1, u2);
+    double u = u1;
+
+    while (u <= u2)
     {
-        // show optimized set point
-        visualization_msgs::Marker p;
-        p.header.frame_id = "world";
-        p.header.stamp = ros::Time::now();
-        p.id = s + point_num;
+        Eigen::Vector3d val = bspline.evaluate(u);
+        geometry_msgs::PoseStamped pose;
+        pose.header.frame_id = "world";
 
-        p.type = visualization_msgs::Marker::SPHERE;
-        p.action = visualization_msgs::Marker::ADD;
+        pose.pose.position.x = val(0);
+        pose.pose.position.y = val(1);
+        pose.pose.position.z = val(2);
 
-        Eigen::Vector3d pos(3);
-        getPositionFromCoeff(pos, coeff, s, 0);
+        pose.pose.orientation.w = 1;
+        pose.pose.orientation.x = 0;
+        pose.pose.orientation.y = 0;
+        pose.pose.orientation.z = 0;
 
-        p.pose.position.x = pos(0);
-        p.pose.position.y = pos(1);
-        p.pose.position.z = pos(2);
-        p.pose.orientation.w = 1;
-        p.pose.orientation.x = 0;
-        p.pose.orientation.y = 0;
-        p.pose.orientation.z = 0;
+        path.poses.push_back(pose);
 
-        p.scale.x = p.scale.y = p.scale.z = 0.2;
-
-        p.color.a = p.color.r = p.color.g = 1.0;
-        p.color.b = 0.0;
-
-        p.lifetime = ros::Duration(7.0);
-
-        setpoint_pub.publish(p);
-
-        // show path
-        _t = my_time(s);
-        for (float t = 0; t < _t; t += 0.2)
-        {
-            Eigen::Vector3d pos(3);
-            getPositionFromCoeff(pos, coeff, s, t);
-
-            // publish these point
-            geometry_msgs::PoseStamped pose;
-            pose.header.frame_id = "world";
-
-            pose.pose.position.x = pos(0);
-            pose.pose.position.y = pos(1);
-            pose.pose.position.z = pos(2);
-
-            pose.pose.orientation.w = 1;
-            pose.pose.orientation.x = 0;
-            pose.pose.orientation.y = 0;
-            pose.pose.orientation.z = 0;
-
-            path.poses.push_back(pose);
-        }
+        u += 0.01;
     }
+
     traj_pub.publish(path);
-
-    if (!animate)
-        return;
-    // then publish point on trajectory one by one
-    for (int s = 0; s < (point_num - 1); s++)
-    {
-        _t = my_time(s);
-        for (float t = 0; t < _t; t += 0.05)
-        {
-            visualization_msgs::Marker p;
-            p.header.frame_id = "world";
-            p.header.stamp = ros::Time::now();
-            p.id = 1;
-
-            p.type = visualization_msgs::Marker::SPHERE;
-            p.action = visualization_msgs::Marker::ADD;
-
-            Eigen::Vector3d pos(3);
-            getPositionFromCoeff(pos, coeff, s, t);
-
-            p.pose.position.x = pos(0);
-            p.pose.position.y = pos(1);
-            p.pose.position.z = pos(2);
-            p.pose.orientation.w = 1;
-            p.pose.orientation.x = 0;
-            p.pose.orientation.y = 0;
-            p.pose.orientation.z = 0;
-
-            p.scale.x = p.scale.y = p.scale.z = 0.3;
-
-            p.color.a = p.color.r = p.color.g = 1.0;
-            p.color.b = 0.0;
-
-            p.lifetime = ros::Duration(0.05);
-            traj_point_pub.publish(p);
-            ros::Duration(0.01).sleep();
-        }
-    }
-}
-
-void getPositionFromCoeff(Eigen::Vector3d& pos, Eigen::MatrixXd coeff, int index, double time)
-{
-    int s = index;
-    double t = time;
-    float x = coeff(s, 0) + coeff(s, 1) * t + coeff(s, 2) * pow(t, 2) + coeff(s, 3) * pow(t, 3) +
-              coeff(s, 4) * pow(t, 4) + coeff(s, 5) * pow(t, 5);
-    float y = coeff(s, 6) + coeff(s, 7) * t + coeff(s, 8) * pow(t, 2) + coeff(s, 9) * pow(t, 3) +
-              coeff(s, 10) * pow(t, 4) + coeff(s, 11) * pow(t, 5);
-    float z = coeff(s, 12) + coeff(s, 13) * t + coeff(s, 14) * pow(t, 2) + coeff(s, 15) * pow(t, 3) +
-              coeff(s, 16) * pow(t, 4) + coeff(s, 17) * pow(t, 5);
-
-    pos(0) = x;
-    pos(1) = y;
-    pos(2) = z;
 }
 
 #endif

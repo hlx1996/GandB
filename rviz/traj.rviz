@@ -63,7 +63,7 @@ Visualization Manager:
       Marker Topic: trajopt/setpoint
       Name: Marker
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -94,7 +94,7 @@ Visualization Manager:
       Marker Topic: sdf_tools_tutorial_visualization
       Name: Marker
       Namespaces:
-        {}
+        collision_map: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -130,7 +130,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0
+      Angle: 2.60770321e-08
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
@@ -140,11 +140,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 74.2314835
+      Scale: 80.5241699
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 0.118546866
-      Y: 0.182341874
+      X: -0.0167644694
+      Y: -0.00443238392
     Saved: ~
 Window Geometry:
   Displays:

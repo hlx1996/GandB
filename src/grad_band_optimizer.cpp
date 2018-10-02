@@ -175,7 +175,8 @@ void GradBandOptimizer::optimize3()
     // opt.set_xtol_rel(1e-4);
 
     // optimization variables, (x1,y1,z1, x2,y2,z2 ... xn,yn,zn)
-    vector<double> q(3 * (points.rows() - 2));
+    this->var_num = 3 * (points.rows() - 2);
+    vector<double> q(this->var_num);
     double minf;
     for (int i = 0; i < points.rows() - 1; ++i)
     {
@@ -275,7 +276,7 @@ double GradBandOptimizer::costFunc2(const std::vector<double>& x, std::vector<do
 double GradBandOptimizer::costFunc3(const std::vector<double>& x, std::vector<double>& grad, void* func_data)
 {
     GradBandOptimizer* opt = reinterpret_cast<GradBandOptimizer*>(func_data);
-    grad.resize(3 * (opt->points.rows() - 2));
+    grad.resize(opt->var_num);
 
     // here we should get the current optimizing point and use its back and front point
     double f = 0.0;
@@ -346,4 +347,104 @@ double GradBandOptimizer::costFunc3(const std::vector<double>& x, std::vector<do
         //      << " \n gf2: " << gf2.transpose() << "\n f: " << f << "  grad: " << gf.transpose() << endl;
     }
     return f;
+}
+
+double GradBandOptimizer::velConstraint(const std::vector<double>& x, std::vector<double>& grad, void* data)
+{
+    GradBandOptimizer* opt = reinterpret_cast<GradBandOptimizer*>(data);
+    grad.resize(opt->var_num);
+
+    // get the current idx of points
+    int idx = opt->current_optimize_id;
+    int axis = opt->current_axis;
+    int sign = opt->current_sign;
+
+    // the control points of velocity is (pi+1-pi)/dt, when the interal is dt
+    // we try interval = 2
+    // optimization variables, (x1,y1,z1, x2,y2,z2 ... xn,yn,zn)
+    // notice that the first and last point is not added in the optimized variables
+    double mi, mi1, vi;
+    for (int i = 0; i < opt->var_num - 1; ++i)
+        grad[i] = 0.0;
+
+    // constrain
+    if (idx == 0)
+    {
+        mi = opt->points(0, axis);
+        mi1 = x[axis];
+
+        grad[axis] = double(sign);
+    }
+    else if (idx == opt->points.rows() - 2)
+    {
+        mi = x[3 * (idx - 1) + axis];
+        mi1 = opt->points(opt->points.rows() - 1, axis);
+
+        grad[3 * (idx - 1) + axis] = -double(sign);
+    }
+    else
+    {
+        mi = x[3 * (idx - 1) + axis];
+        mi1 = x[3 * idx + axis];
+
+        grad[3 * (idx - 1) + axis] = -double(sign);
+        grad[3 * idx + axis] = double(sign);
+    }
+
+    // NLopt use g(x) <= 0 constraint
+    static double vm = 2.5, dt = 2.0;
+    return sign * (mi1 - mi) - vm * dt;
+}
+
+double GradBandOptimizer::accConstraint(const std::vector<double>& x, std::vector<double>& grad, void* data)
+{
+    GradBandOptimizer* opt = reinterpret_cast<GradBandOptimizer*>(data);
+    grad.resize(opt->var_num);
+
+    // get the current idx of points
+    int idx = opt->current_optimize_id;
+    int axis = opt->current_axis;
+    int sign = opt->current_sign;
+
+    // the control points of acceleration is (pi+2 - 2pi+1 + pi)/dt^2, when the interal is dt
+    // we try interval = 2
+    // optimization variables, (x1,y1,z1, x2,y2,z2 ... xn,yn,zn)
+    // notice that the first and last point is not added in the optimized variables
+    double mi, mi1, mi2, ai;
+    for (int i = 0; i < opt->var_num - 1; ++i)
+        grad[i] = 0.0;
+
+    // constrain
+    if (idx == 0)
+    {
+        mi = opt->points(0, axis);
+        mi1 = x[axis];
+        mi2 = x[axis + 3];
+
+        grad[axis] = -2.0 * double(sign);
+        grad[axis + 3] = double(sign);
+    }
+    else if (idx == opt->points.rows() - 3)
+    {
+        mi = x[3 * (idx - 1) + axis];
+        mi1 = x[3 * idx + axis];
+        mi2 = opt->points(opt->points.rows() - 1, axis);
+
+        grad[3 * (idx - 1) + axis] = double(sign);
+        grad[3 * idx + axis] = -2.0 * double(sign);
+    }
+    else
+    {
+        mi = x[3 * (idx - 1) + axis];
+        mi1 = x[3 * idx + axis];
+        mi2 = x[3 * (idx + 1) + axis];
+
+        grad[3 * (idx - 1) + axis] = double(sign);
+        grad[3 * idx + axis] = -2.0 * double(sign);
+        grad[3 * (idx + 1) + axis] = double(sign);
+    }
+
+    // NLopt use g(x) <= 0 constraint
+    static double am = 2.5, dt = 2.0;
+    return sign * (mi2 - 2 * mi1 + mi) - am * dt * dt;
 }
