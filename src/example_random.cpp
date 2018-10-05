@@ -34,11 +34,14 @@ int main(int argc, char** argv)
     ros::param::get("/random/min_step", min_step);
     ros::param::get("/random/max_step", max_step);
 
-    double alpha, beta, lamda, dist0, st, scale;
-    int num, point_opti_num, algorithm, solver;
+    double alpha, beta, lamda1, lamda2, dist0, st, scale;
+    int num, point_opti_num, algorithm, solver, pow1, pow2;
     ros::param::get("/random/alpha", alpha);
     ros::param::get("/random/beta", beta);
-    ros::param::get("/random/lamda", lamda);
+    ros::param::get("/random/lamda1", lamda1);
+    ros::param::get("/random/lamda2", lamda2);
+    ros::param::get("/random/pow1", pow1);
+    ros::param::get("/random/pow2", pow2);
     ros::param::get("/random/dist0", dist0);
 
     ros::param::get("/random/opti_num", num);
@@ -222,7 +225,7 @@ int main(int argc, char** argv)
         }
 
         GradBandOptimizer optimizer(points, &sdf, resolution);
-        optimizer.setParameter(alpha, beta, lamda, dist0, scale, point_opti_num, algorithm);
+        optimizer.setParameter(alpha, beta, lamda1, lamda2, pow1, pow2, dist0, scale, point_opti_num, algorithm);
         double time1 = 0.0;
         for (int i = 0; i < num; ++i)
         {
@@ -245,7 +248,7 @@ int main(int argc, char** argv)
             displayTrajectory(bspline);
         }
 
-        // break;
+        break;
         ros::Duration(2.0).sleep();
     }
 

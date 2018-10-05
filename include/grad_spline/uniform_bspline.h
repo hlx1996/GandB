@@ -88,9 +88,9 @@ UniformBspline::UniformBspline(Eigen::MatrixXd points, int order, bool auto_exte
     M[2] = M5;
 
     // show the result
-    cout << "p: " << p << "  n: " << n << "  m: " << m << endl;
-    cout << "control pts:\n" << control_points << "\nknots:\n" << this->u.transpose() << endl;
-    cout << "M3:\n" << M[0] << "\nM4:\n" << M[1] << "\nM5:\n" << M[2] << endl;
+    // cout << "p: " << p << "  n: " << n << "  m: " << m << endl;
+    // cout << "control pts:\n" << control_points << "\nknots:\n" << this->u.transpose() << endl;
+    // cout << "M3:\n" << M[0] << "\nM4:\n" << M[1] << "\nM5:\n" << M[2] << endl;
 }
 
 UniformBspline::~UniformBspline()

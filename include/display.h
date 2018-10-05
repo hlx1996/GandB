@@ -90,7 +90,7 @@ void visualizePoints(Eigen::MatrixXd points)
         p.color.g = cg;
         p.color.b = cb;
 
-        p.lifetime = ros::Duration(10.0);
+        p.lifetime = ros::Duration(2000.0);
 
         setpoint_pub.publish(p);
         ros::Duration(0.0001).sleep();

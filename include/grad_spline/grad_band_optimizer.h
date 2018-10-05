@@ -19,21 +19,25 @@ class GradBandOptimizer
     sdf_tools::SignedDistanceField* sdf;
     double resolution;
     Eigen::MatrixXd points;
-    double alpha, beta, lamda, dist0, alp, scale;
+    double alpha, beta, lamda1, lamda2, dist0, alp, scale;
+    int pow1, pow2;
 
-    // used for adding derivative constrains  
-    int current_optimize_id; //id range from 0 to (points.rows-2)
-    int current_axis; // axis is 0, 1, 2 for x, y, z;
-    int current_sign; // sign is +1, -1 for lesser and larger
-    int var_num; // number of variables to be optimized  
+    // used for adding derivative constrains
+    // these seems not work... so try different way for adding costrains
+    int current_optimize_id;  // id range from 0 to (points.rows-2)
+    int current_axis;         // axis is 0, 1, 2 for x, y, z;
+    int current_sign;         // sign is +1, -1 for lesser and larger
+    int var_num;              // number of variables to be optimized
 
     int algorithm;
     int point_opti_num;
 
-
     void getDistanceAndGradient(Eigen::Vector3d& pos, double& dist, Eigen::Vector3d& grad);
 
   public:
+    std::vector<double> min_var;
+    double min_cost;
+
     GradBandOptimizer(Eigen::MatrixXd points, sdf_tools::SignedDistanceField* sdf, double res);
     ~GradBandOptimizer();
 
@@ -41,8 +45,8 @@ class GradBandOptimizer
     Eigen::MatrixXd getPoints();
 
     // set algorithm parameters
-    void setParameter(double alpha, double beta, double lamda, double dist0, double scale, int point_opti_num,
-                      int algorithm);
+    void setParameter(double alpha, double beta, double lamda1, double lamda2, int pow1, int pow2, double dist0,
+                      double scale, int point_opti_num, int algorithm);
 
     // execute main operation here
     // This function use hand-written optimization
@@ -60,10 +64,10 @@ class GradBandOptimizer
 
     // For using NLopt solver, we need a func()
     static double costFunc2(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
-    static double costFunc3(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
-    static double velConstraint(const std::vector<double> &x, std::vector<double> &grad, void *data);
-    static double accConstraint(const std::vector<double> &x, std::vector<double> &grad, void *data);
 
+    static double costFunc3(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
+    static double velConstraint(const std::vector<double>& x, std::vector<double>& grad, void* data);
+    static double accConstraint(const std::vector<double>& x, std::vector<double>& grad, void* data);
 };
 
 #endif
