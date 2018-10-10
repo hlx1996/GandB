@@ -19,7 +19,8 @@ class GradBandOptimizer
     sdf_tools::SignedDistanceField* sdf;
     double resolution;
     Eigen::MatrixXd points;
-    double alpha, beta, lamda1, lamda2, dist0, alp, scale;
+    double alpha, beta, lamda1, lamda2, lamda3, dist0, alp, scale;  // objective function parameters
+    double max_vel, max_acc, interval;                              // constrains parameters
     int pow1, pow2;
 
     // used for adding derivative constrains
@@ -45,8 +46,9 @@ class GradBandOptimizer
     Eigen::MatrixXd getPoints();
 
     // set algorithm parameters
-    void setParameter(double alpha, double beta, double lamda1, double lamda2, int pow1, int pow2, double dist0,
-                      double scale, int point_opti_num, int algorithm);
+    void setParameter(double alpha, double beta, double lamda1, double lamda2, double lamda3, int pow1, int pow2,
+                      double dist0, double scale, int point_opti_num, int algorithm, double max_vel, double max_acc,
+                      double interval);
 
     // execute main operation here
     // This function use hand-written optimization
@@ -66,6 +68,8 @@ class GradBandOptimizer
     static double costFunc2(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
 
     static double costFunc3(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
+    static double costFunc4(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
+    static double costFunc5(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
     static double velConstraint(const std::vector<double>& x, std::vector<double>& grad, void* data);
     static double accConstraint(const std::vector<double>& x, std::vector<double>& grad, void* data);
 };

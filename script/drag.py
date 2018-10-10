@@ -4,8 +4,10 @@ from uniform_bspline import UniformBspline
 from bspline import BSpline
 
 global pts
+# pts = [ [1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],
+#         [2.0,3.0,5.0,7.0,3.0,6.0,8.0,9.0,1.0]]
 pts = [ [1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],
-        [2.0,3.0,5.0,7.0,3.0,6.0,8.0,9.0,1.0]]
+        [5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0]]
 
 global obss
 obss = [[2,2],[3,3],[8,8],[9,5],[5,5],[7,3],[9,7]]
@@ -58,7 +60,7 @@ def drawBSpline():
     '''
     global pts
     # bspline = UniformBspline(pts)
-    bspline = BSpline(pts,4)
+    bspline = BSpline(pts,4,False)
     rg = bspline.getRegion()
     d1 = bspline.getDerivative()
     d2 = d1.getDerivative()
@@ -233,7 +235,7 @@ def main():
     ax.plot(pts[0],pts[1],'ro')
     ax.plot(pts[0],pts[1],'g')
     x, y, cx, cy, vx, vy, acx, acy, time = drawBSpline()
-    ax.plot(x, y)
+    ax.plot(x, y, 'r')
     ax.plot(cx, cy, 'yo')
     drawObs()
     for i in range(len(obs)):

@@ -44,14 +44,16 @@ Eigen::MatrixXd GradBandOptimizer::getPoints()
     return this->points;
 }
 
-void GradBandOptimizer::setParameter(double alpha, double beta, double lamda1, double lamda2, int pow1, int pow2,
-                                     double dist0, double scale, int point_opti_num, int algorithm)
+void GradBandOptimizer::setParameter(double alpha, double beta, double lamda1, double lamda2, double lamda3, int pow1,
+                                     int pow2, double dist0, double scale, int point_opti_num, int algorithm,
+                                     double max_vel, double max_acc, double interval)
 {
     this->alpha = alpha;
     this->alp = alpha;
     this->beta = beta;
     this->lamda1 = lamda1;
     this->lamda2 = lamda2;
+    this->lamda3 = lamda3;
     this->pow1 = pow1;
     this->pow2 = pow2;
 
@@ -60,6 +62,10 @@ void GradBandOptimizer::setParameter(double alpha, double beta, double lamda1, d
     this->scale = scale;
     this->point_opti_num = point_opti_num;
     this->algorithm = algorithm;
+
+    this->max_vel = max_vel;
+    this->max_acc = max_acc;
+    this->interval = interval;
 }
 
 void GradBandOptimizer::getDistanceAndGradient(Eigen::Vector3d& pos, double& dist, Eigen::Vector3d& grad)
@@ -256,12 +262,12 @@ double GradBandOptimizer::costFunc2(const std::vector<double>& x, std::vector<do
     return f;
 }
 
-// best algorithm is 40: SLSQP
+// best algorithm is 40: SLSQP(constrained), 11 LBFGS(unconstrained barrier method)
 void GradBandOptimizer::optimize3()
 {
     this->min_cost = 100000.0;
     nlopt::opt opt(nlopt::algorithm(algorithm), 3 * (points.rows() - 2));
-    opt.set_min_objective(GradBandOptimizer::costFunc3, this);
+    opt.set_min_objective(GradBandOptimizer::costFunc5, this);
 
     // add constrains... there are so many, but each constrains is quite simple
     vector<ConstrainData*> cons;
@@ -283,9 +289,9 @@ void GradBandOptimizer::optimize3()
                 cons.push_back(con);
                 // int con_num = cons.size();
 
-                opt.add_inequality_constraint(GradBandOptimizer::velConstraint, con, 1e-4);
-                if (idx <= this->points.rows() - 3)
-                    opt.add_inequality_constraint(GradBandOptimizer::accConstraint, con, 1e-4);
+                // opt.add_inequality_constraint(GradBandOptimizer::velConstraint, con, 1e-4);
+                // if (idx <= this->points.rows() - 3)
+                //     opt.add_inequality_constraint(GradBandOptimizer::accConstraint, con, 1e-4);
             }
         }
     }
@@ -334,6 +340,7 @@ void GradBandOptimizer::optimize3()
     }
 }
 
+// this cost function minimize the length; in ensence it optimize the first order derivative
 double GradBandOptimizer::costFunc3(const std::vector<double>& x, std::vector<double>& grad, void* func_data)
 {
     GradBandOptimizer* opt = reinterpret_cast<GradBandOptimizer*>(func_data);
@@ -432,6 +439,321 @@ double GradBandOptimizer::costFunc3(const std::vector<double>& x, std::vector<do
         //      << " \n gf2: " << gf2.transpose() << "\n f: " << f << "  grad: " << gf.transpose() << endl;
     }
     cout << optnum << " cost smooth: " << sumf1 << " , grad: " << sumf2 << ", total: " << f << endl;
+
+    // save the min cost result
+    if (f < opt->min_cost)
+    {
+        opt->min_cost = f;
+        opt->min_var = x;
+    }
+
+    return f;
+}
+
+// this cost optimize the curvature; in ensence it optimize the second order derivative
+double GradBandOptimizer::costFunc4(const std::vector<double>& x, std::vector<double>& grad, void* func_data)
+{
+    GradBandOptimizer* opt = reinterpret_cast<GradBandOptimizer*>(func_data);
+    grad.resize(opt->var_num);
+    for (int i = 0; i < grad.size(); ++i)
+    {
+        grad[i] = 0;
+    }
+
+    // add norm them for the 1->(n-2) terms
+    // here we should get the current optimizing point and use its back and front point
+    static int optnum = 0;
+    ++optnum;
+    double f = 0.0, sumf1 = 0.0, sumf2 = 0.0;
+
+    for (int i = 0; i < opt->points.rows(); ++i)
+    {
+        if (i == 0 || i == opt->points.rows() - 1)
+            continue;
+
+        // get the current, back and front points
+        Eigen::Vector3d q1, q2, q3;
+        if (i == 1)
+            q1 = opt->points.row(0);
+        else
+        {
+            q1(0) = x[0 + 3 * (i - 2)];
+            q1(1) = x[1 + 3 * (i - 2)];
+            q1(2) = x[2 + 3 * (i - 2)];
+        }
+
+        q2(0) = x[0 + 3 * (i - 1)];
+        q2(1) = x[1 + 3 * (i - 1)];
+        q2(2) = x[2 + 3 * (i - 1)];
+
+        if (i == opt->points.rows() - 2)
+            q3 = opt->points.row(opt->points.rows() - 1);
+        else
+        {
+            q3(0) = x[0 + 3 * i];
+            q3(1) = x[1 + 3 * i];
+            q3(2) = x[2 + 3 * i];
+        }
+
+        // The objective function is f = scale (f1 + lamda2*f2), with f1 = ||q1+q3-2q2||^2
+        double f1 = opt->lamda1 * (q1 + q3 - 2 * q2).squaredNorm();
+        sumf1 += f1;
+
+        // f2 = (d-d0)^2, if d<d0; or 0, if d>=d0
+        Eigen::Vector3d dist_grad;
+        double dist;
+        opt->getDistanceAndGradient(q2, dist, dist_grad);
+
+        double f2 = 0.0;
+        if (dist < opt->dist0 && i != opt->points.rows() - 1)
+            f2 = opt->lamda2 * pow(dist - opt->dist0, opt->pow2);
+        sumf2 += f2;
+
+        f += (f1 + f2);
+
+        // Then calculate the gradient of the function
+        // for f1 = ||q1+q3-2q2||^2, we much calculate gradient for q1, q2, q3 respectively
+
+        Eigen::Vector3d g1, g2, g3;
+        if (i == 1)
+            g1 = Eigen::Vector3d::Zero();
+        else
+            g1 = opt->lamda1 * 2 * (q1 + q3 - 2 * q2);
+
+        g2 = -opt->lamda1 * 4 * (q1 + q3 - 2 * q2);
+
+        if (i == opt->points.rows() - 2)
+            g3 = Eigen::Vector3d::Zero();
+        else
+            g3 = opt->lamda1 * 2 * (q1 + q3 - 2 * q2);
+
+        // grad(f2) = 2(d-d0)*grad(dist), if d<d0
+        Eigen::Vector3d gf2 = Eigen::Vector3d::Zero();
+        if (dist < opt->dist0 && i != opt->points.rows() - 1)
+            gf2 = opt->lamda2 * opt->pow2 * pow(dist - opt->dist0, opt->pow2 - 1) * dist_grad;
+
+        // return gradient of function and cost
+        if (i != 1)
+        {
+            grad[0 + 3 * (i - 2)] += g1(0);
+            grad[1 + 3 * (i - 2)] += g1(1);
+            grad[2 + 3 * (i - 2)] += g1(2);
+        }
+
+        grad[0 + 3 * (i - 1)] += g2(0) + gf2(0);
+        grad[1 + 3 * (i - 1)] += g2(1) + gf2(1);
+        grad[2 + 3 * (i - 1)] += g2(2) + gf2(2);
+
+        if (i != opt->points.rows() - 2)
+        {
+            grad[0 + 3 * i] += g3(0);
+            grad[1 + 3 * i] += g3(1);
+            grad[2 + 3 * i] += g3(2);
+        }
+
+        // print intermediate result
+        // cout << "id: " << opt->current_optimize_id << "\n 3 points:\n"
+        //      << q1.transpose() << "\n"
+        //      << q2.transpose() << "\n"
+        //      << q3.transpose() << "\n f1: " << f1 << "\n f2: " << f2 << " \n gf1: " << gf1.transpose()
+        //      << " \n gf2: " << gf2.transpose() << "\n f: " << f << "  grad: " << gf.transpose() << endl;
+    }
+    cout << optnum << " cost smooth: " << sumf1 << " , grad: " << sumf2 << ", total: " << f << endl;
+
+    // save the min cost result
+    if (f < opt->min_cost)
+    {
+        opt->min_cost = f;
+        opt->min_var = x;
+    }
+
+    return f;
+}
+
+// this cost optimize the curvature; in ensence it optimize the second order derivative
+// it also apply the barrier function method to ensure feasibility
+double GradBandOptimizer::costFunc5(const std::vector<double>& x, std::vector<double>& grad, void* func_data)
+{
+    GradBandOptimizer* opt = reinterpret_cast<GradBandOptimizer*>(func_data);
+    grad.resize(opt->var_num);
+    for (int i = 0; i < grad.size(); ++i)
+    {
+        grad[i] = 0;
+    }
+
+    // add norm them for the 1->(n-2) terms
+    // here we should get the current optimizing point and use its back and front point
+    static int optnum = 0;
+    ++optnum;
+    double f = 0.0, sumf1 = 0.0, sumf2 = 0.0, sumg = 0.0;
+
+    for (int i = 0; i < opt->points.rows(); ++i)
+    {
+        if (i == 0 || i == opt->points.rows() - 1)
+            continue;
+
+        // get the current, back and front points
+        Eigen::Vector3d q1, q2, q3;  // 1 previous, 2 present, 3 next point
+        if (i == 1)
+            q1 = opt->points.row(0);
+        else
+        {
+            q1(0) = x[0 + 3 * (i - 2)];
+            q1(1) = x[1 + 3 * (i - 2)];
+            q1(2) = x[2 + 3 * (i - 2)];
+        }
+
+        q2(0) = x[0 + 3 * (i - 1)];
+        q2(1) = x[1 + 3 * (i - 1)];
+        q2(2) = x[2 + 3 * (i - 1)];
+
+        if (i == opt->points.rows() - 2)
+            q3 = opt->points.row(opt->points.rows() - 1);
+        else
+        {
+            q3(0) = x[0 + 3 * i];
+            q3(1) = x[1 + 3 * i];
+            q3(2) = x[2 + 3 * i];
+        }
+
+        // The objective function is f = l1*f1 + l2*f2 + r(gv+ga), with f1 = ||q1+q3-2q2||^2
+        double f1 = opt->lamda1 * (q1 + q3 - 2 * q2).squaredNorm();
+        sumf1 += f1;
+
+        // add the feasibility velocity terms gv, -1/[(mi - mi-1)^2-(vm*dt)^2]
+        static double vm = opt->max_vel, am = opt->max_acc, dt = opt->interval;  // limits of vel, acc; and interval
+        static double vmdts = vm * dt * vm * dt;                                 // (vm*dt)^2
+        Eigen::Vector3d q21 = q2 - q1;                                           // qi - qi-1
+        Eigen::VectorXd costv(6);  // denominator of x, y, z; if i = n-2, the last 3 elements are used, else they're
+                                   // empty
+        double gv = 0.0;
+
+        for (int j = 0; j < 3; ++j)
+        {
+            double deno = q21(j) * q21(j) - vmdts;
+            costv(j) = -1 / deno;
+            gv += costv(j);
+        }
+        // take care if i = n-2
+        Eigen::Vector3d q32 = q3 - q2;
+        if (i == opt->points.rows() - 2)
+        {
+            for (int j = 0; j < 3; ++j)
+            {
+                double deno = q32(j) * q32(j) - vmdts;
+                costv(j + 3) = -1 / deno;
+                gv += costv(j + 3);
+            }
+        }
+        gv *= opt->lamda3;
+
+        // add the acceleration terms ga, -1/[(mi+1 + mi-1 - 2mi)^2 - (am*dt2)^2]
+        static double amdt2s = am * dt * dt * am * dt * dt;  // (am*dt2)^2
+        Eigen::Vector3d q132 = q1 + q3 - 2 * q2;
+        Eigen::Vector3d costa(3);
+        double ga = 0.0;
+        for (int j = 0; j < 3; ++j)
+        {
+            double deno = q132(j) * q132(j) - amdt2s;
+            costa(j) = -1 / deno;
+            ga += costa(j);
+        }
+        ga *= opt->lamda3;
+
+        // show the points relation and g cost
+        for (int j = 0; j < 3; ++j)
+        {
+            // if (costv(j) < 0 || costa(j) < 0)
+            //     cout << "q21:" << q21.transpose() << "\nv cost:" << costv.head(3).transpose()
+            //          << "\nq132:" << q132.transpose() << "\na cost:" << costa.transpose() << "\n\n";
+        }
+
+        sumg += ga + gv;
+
+        // f2 = (d-d0)^2, if d<d0; or 0, if d>=d0
+        Eigen::Vector3d dist_grad;
+        double dist;
+        opt->getDistanceAndGradient(q2, dist, dist_grad);
+
+        double f2 = 0.0;
+        if (dist < opt->dist0 && i != opt->points.rows() - 1)
+            f2 = opt->lamda2 * pow(dist - opt->dist0, opt->pow2);
+        sumf2 += f2;
+
+        f += (f1 + f2 + gv + ga);
+
+        // Then calculate the gradient of the function
+        // for f1 = ||q1+q3-2q2||^2, we much calculate gradient for q1, q2, q3 respectively
+        Eigen::Vector3d g1, g2, g3;
+        if (i == 1)
+            g1 = Eigen::Vector3d::Zero();
+        else
+            g1 = opt->lamda1 * 2 * q132;
+
+        g2 = -opt->lamda1 * 4 * q132;
+
+        if (i == opt->points.rows() - 2)
+            g3 = Eigen::Vector3d::Zero();
+        else
+            g3 = opt->lamda1 * 2 * q132;
+
+        // add the gradient of gv and ga
+        for (int j = 0; j < 3; ++j)
+        {
+            // for gv, grad(B/mi) = 1/[]^2 * 2(mi - mi-1)
+            grad[j + 3 * (i - 1)] += opt->lamda3 * costv(j) * costv(j) * 2 * q21(j);
+
+            // for gv, grad(B/mi-1) = 1/[]^2 * 2(mi-1 - mi)
+            if (i != 1)
+                grad[j + 3 * (i - 2)] += -opt->lamda3 * costv(j) * costv(j) * 2 * q21(j);
+
+            // take care when i = n-2
+            if (i == opt->points.rows() - 2)
+            {
+                grad[j + 3 * (i - 1)] += -opt->lamda3 * costv(j + 3) * costv(j + 3) * 2 * q32(j);
+            }
+
+            // then for ga, grad(B/mi) = 1/[]^2 *(-4)*(mi+1 + mi-1 -2mi2)
+            grad[j + 3 * (i - 1)] += opt->lamda3 * costa(j) * costa(j) * (-4) * q132(j);
+            if (i != 1)
+                grad[j + 3 * (i - 2)] += opt->lamda3 * costa(j) * costa(j) * 2 * q132(j);
+            if (i != opt->points.rows() - 2)
+                grad[j + 3 * i] += opt->lamda3 * costa(j) * costa(j) * 2 * q132(j);
+        }
+
+        // grad(f2) = 2(d-d0)*grad(dist), if d<d0
+        Eigen::Vector3d gf2 = Eigen::Vector3d::Zero();
+        if (dist < opt->dist0 && i != opt->points.rows() - 1)
+            gf2 = opt->lamda2 * opt->pow2 * pow(dist - opt->dist0, opt->pow2 - 1) * dist_grad;
+
+        // return gradient of function and cost
+        if (i != 1)
+        {
+            grad[0 + 3 * (i - 2)] += g1(0);
+            grad[1 + 3 * (i - 2)] += g1(1);
+            grad[2 + 3 * (i - 2)] += g1(2);
+        }
+
+        grad[0 + 3 * (i - 1)] += g2(0) + gf2(0);
+        grad[1 + 3 * (i - 1)] += g2(1) + gf2(1);
+        grad[2 + 3 * (i - 1)] += g2(2) + gf2(2);
+
+        if (i != opt->points.rows() - 2)
+        {
+            grad[0 + 3 * i] += g3(0);
+            grad[1 + 3 * i] += g3(1);
+            grad[2 + 3 * i] += g3(2);
+        }
+
+        // print intermediate result
+        // cout << "id: " << opt->current_optimize_id << "\n 3 points:\n"
+        //      << q1.transpose() << "\n"
+        //      << q2.transpose() << "\n"
+        //      << q3.transpose() << "\n f1: " << f1 << "\n f2: " << f2 << " \n gf1: " << gf1.transpose()
+        //      << " \n gf2: " << gf2.transpose() << "\n f: " << f << "  grad: " << gf.transpose() << endl;
+    }
+    // cout << optnum << " --------cost smooth: " << sumf1 << " , grad: " << sumf2 << " , barrier: " << sumg
+    //      << ", total: " << f << "-------------" << endl;
 
     // save the min cost result
     if (f < opt->min_cost)

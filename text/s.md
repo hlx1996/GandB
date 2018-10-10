@@ -25,9 +25,12 @@ We aim to solve the pose to pose planning problem. During the flying, the uav sh
 * What is the ESDF(distance field) of densely cluttered environment look like, how to utilize it.
 
 ## Plan
-* Add the constrains of reachable set
-  - write in python the matrix representation of b-spline.
-  - write in python the velocity and acceleration, use the notion of matrix and new control points.
-  - transfer to C++ 
 * Spilt and merge of points
+ - SQP is very sensitive to large amount of variable (n^3)
 * Kinodynamic search
+
+
+## Result
+ - SQP, around from 20-100 ms, result is good, but very slow if number of points is large(50 points, 100ms)
+ - constrained slow down SQP (usually double the time)
+ - LBFGS is very fast and almost always show good result. Besides it does not get much slower as the number of points increase(50 pts, 1ms; about 100pts, 2ms).
