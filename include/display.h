@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
+#include <nav_msgs/Odometry.h>
 
 #include <Eigen/Eigen>
 
@@ -20,6 +21,7 @@ int point_num;
 ros::Publisher setpoint_pub;
 ros::Publisher traj_pub;
 ros::Publisher traj_point_pub;
+ros::Publisher va_pub;
 
 // visualize initial waypoint
 void visualizeSetPoints(vector<Eigen::Vector3d> points)
@@ -110,9 +112,23 @@ void displayTrajectory(UniformBspline bspline)
     double u1, u2;
     bspline.getRegion(u1, u2);
     double u = u1;
+    UniformBspline vel = bspline.getDerivative();
+    UniformBspline acc = vel.getDerivative();
+
+    ros::Time start = ros::Time::now();
+
+    // start msg
+    nav_msgs::Odometry odom;
+    odom.header.frame_id = "world";
+    odom.header.stamp = ros::Time::now();
+    odom.pose.pose.position.x = -1.0;
+    odom.pose.pose.position.y = -1.0;
+    odom.pose.pose.position.z = -1.0;
+    va_pub.publish(odom);
 
     while (u <= u2)
     {
+        // publish the whole trajectory
         Eigen::Vector3d val = bspline.evaluate(u);
         geometry_msgs::PoseStamped pose;
         pose.header.frame_id = "world";
@@ -128,8 +144,32 @@ void displayTrajectory(UniformBspline bspline)
 
         path.poses.push_back(pose);
 
+        // publish the velocity and acceleration
+        Eigen::Vector3d v = vel.evaluate(u);
+        Eigen::Vector3d a = acc.evaluate(u);
+
+        nav_msgs::Odometry odom;
+        odom.header.frame_id = "world";
+        odom.header.stamp = ros::Time(u);
+        // odom.header.stamp = ros::Time::now();
+        odom.pose.pose.position.x = v(0);
+        odom.pose.pose.position.y = v(1);
+        odom.pose.pose.position.z = v(2);
+        odom.twist.twist.linear.x = a(0);
+        odom.twist.twist.linear.y = a(1);
+        odom.twist.twist.linear.z = a(2);
+        va_pub.publish(odom);
+        ros::Duration(0.001).sleep();
+
         u += 0.01;
     }
+
+    odom.header.frame_id = "world";
+    odom.header.stamp = ros::Time::now();
+    odom.pose.pose.position.x = 1.0;
+    odom.pose.pose.position.y = 1.0;
+    odom.pose.pose.position.z = 1.0;
+    va_pub.publish(odom);
 
     traj_pub.publish(path);
 }

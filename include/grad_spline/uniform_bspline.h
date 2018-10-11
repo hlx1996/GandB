@@ -13,12 +13,13 @@ class UniformBspline
     Eigen::MatrixXd control_points;
     std::vector<Eigen::MatrixXd> M;  // 012,345
     Eigen::VectorXd u;
+    double interval;
 
     Eigen::VectorXd getU(double u);
     Eigen::MatrixXd getPi(int idx);
 
   public:
-    UniformBspline(Eigen::MatrixXd points, int order, bool auto_extend = true);
+    UniformBspline(Eigen::MatrixXd points, int order, double interval, bool auto_extend = true);
     ~UniformBspline();
 
     void getRegion(double& um, double& um_p);
@@ -31,7 +32,7 @@ class UniformBspline
 };
 
 // control points is a (n+1)x3 matrix
-UniformBspline::UniformBspline(Eigen::MatrixXd points, int order, bool auto_extend)
+UniformBspline::UniformBspline(Eigen::MatrixXd points, int order, double interval, bool auto_extend)
 {
     this->p = order;
     if (auto_extend)
@@ -54,6 +55,7 @@ UniformBspline::UniformBspline(Eigen::MatrixXd points, int order, bool auto_exte
     this->m = this->n + this->p + 1;
 
     // calculate knots vector
+    this->interval = interval;
     this->u = Eigen::VectorXd::Zero(this->m + 1);
     for (int i = 0; i <= this->m; ++i)
     {
@@ -62,7 +64,7 @@ UniformBspline::UniformBspline(Eigen::MatrixXd points, int order, bool auto_exte
 
         else if (i > this->p && i <= this->m - this->p)
         {
-            this->u(i) = this->u(i - 1) + 2.0;
+            this->u(i) = this->u(i - 1) + this->interval;
         }
         else if (i > this->m - this->p)
         {
@@ -160,7 +162,7 @@ Eigen::MatrixXd UniformBspline::getDerivativeControlPoints()
 UniformBspline UniformBspline::getDerivative()
 {
     Eigen::MatrixXd ctp = this->getDerivativeControlPoints();
-    UniformBspline derivative = UniformBspline(ctp, p - 1, false);
+    UniformBspline derivative = UniformBspline(ctp, p - 1, this->interval, false);
     return derivative;
 }
 

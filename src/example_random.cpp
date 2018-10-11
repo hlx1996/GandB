@@ -24,6 +24,7 @@ int main(int argc, char** argv)
     traj_pub = node.advertise<nav_msgs::Path>("trajopt/init_traj", 5);
     ros::Publisher visualization_pub =
         node.advertise<visualization_msgs::Marker>("sdf_tools_tutorial_visualization", 1, true);
+    va_pub = node.advertise<nav_msgs::Odometry>("trajopt/odom", 10);
 
     srand(ros::Time::now().toSec());
     ros::Duration(0.5).sleep();
@@ -35,7 +36,7 @@ int main(int argc, char** argv)
     ros::param::get("/random/max_step", max_step);
 
     double alpha, beta, lamda1, lamda2, lamda3, dist0, st, scale;
-    int num, point_opti_num, algorithm, solver, pow1, pow2;
+    int num, point_opti_num, algorithm, solver, pow1, pow2, isloop;
     double max_vel, max_acc, interval;
     ros::param::get("/random/alpha", alpha);
     ros::param::get("/random/beta", beta);
@@ -56,6 +57,7 @@ int main(int argc, char** argv)
     ros::param::get("/random/max_vel", max_vel);
     ros::param::get("/random/max_acc", max_acc);
     ros::param::get("/random/interval", interval);
+    ros::param::get("/random/loop", isloop);
 
     while (ros::ok())
     {
@@ -251,11 +253,12 @@ int main(int argc, char** argv)
             visualizePoints(pts);
 
             // use the optimized points for bspline
-            UniformBspline bspline = UniformBspline(pts, 4);
+            UniformBspline bspline = UniformBspline(pts, 4, interval);
             displayTrajectory(bspline);
         }
 
-        // break;
+        if (!isloop)
+            break;
         ros::Duration(2.0).sleep();
     }
 

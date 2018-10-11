@@ -752,8 +752,8 @@ double GradBandOptimizer::costFunc5(const std::vector<double>& x, std::vector<do
         //      << q3.transpose() << "\n f1: " << f1 << "\n f2: " << f2 << " \n gf1: " << gf1.transpose()
         //      << " \n gf2: " << gf2.transpose() << "\n f: " << f << "  grad: " << gf.transpose() << endl;
     }
-    // cout << optnum << " --------cost smooth: " << sumf1 << " , grad: " << sumf2 << " , barrier: " << sumg
-    //      << ", total: " << f << "-------------" << endl;
+    cout << optnum << " smooth: " << sumf1 << " , grad: " << sumf2 << " , barrier: " << sumg << ", total: " << f
+         << "\n\n";
 
     // save the min cost result
     if (f < opt->min_cost)

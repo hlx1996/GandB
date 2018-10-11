@@ -9,7 +9,7 @@ int main(int argc, char const* argv[])
 
     cout << "points:\n" << points << endl;
 
-    UniformBspline bspline = UniformBspline(points, 4);
+    UniformBspline bspline = UniformBspline(points, 4, 2.0);
     double a, b;
     bspline.getRegion(a, b);
     cout << "region: " << a << "," << b << endl;
