@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include "grad_spline/uniform_bspline.h"
+#include "grad_spline/data_type.h"
 
 using std::vector;
 
@@ -22,6 +23,8 @@ ros::Publisher setpoint_pub;
 ros::Publisher traj_pub;
 ros::Publisher traj_point_pub;
 ros::Publisher va_pub;
+ros::Publisher path_pub;
+ros::Publisher visited_pub;
 
 // visualize initial waypoint
 void visualizeSetPoints(vector<Eigen::Vector3d> points)
@@ -172,6 +175,79 @@ void displayTrajectory(UniformBspline bspline)
     va_pub.publish(odom);
 
     traj_pub.publish(path);
+}
+
+void displayPath(vector<Eigen::Vector3d> grid_path, double resolution)
+{
+    visualization_msgs::Marker mk;
+    mk.header.frame_id = "world";
+    mk.header.stamp = ros::Time::now();
+    mk.type = visualization_msgs::Marker::CUBE;
+    mk.action = visualization_msgs::Marker::ADD;
+
+    mk.pose.orientation.x = 0.0;
+    mk.pose.orientation.y = 0.0;
+    mk.pose.orientation.z = 0.0;
+    mk.pose.orientation.w = 1.0;
+    mk.color.a = 1.0;
+    mk.color.r = 1.0;
+    mk.color.g = 0.0;
+    mk.color.b = 0.0;
+
+    int idx = 0;
+    for (int i = 0; i < int(grid_path.size()); i++)
+    {
+        mk.id = idx;
+
+        mk.pose.position.x = grid_path[i](0);
+        mk.pose.position.y = grid_path[i](1);
+        mk.pose.position.z = grid_path[i](2);
+
+        mk.scale.x = resolution;
+        mk.scale.y = resolution;
+        mk.scale.z = resolution;
+
+        idx++;
+
+        path_pub.publish(mk);
+        ros::Duration(0.0001).sleep();
+    }
+}
+
+void displayVisitedNodes(vector<GridNodePtr> nodes, double resolution)
+{
+    visualization_msgs::Marker mk;
+    mk.header.frame_id = "world";
+    mk.header.stamp = ros::Time::now();
+    mk.type = visualization_msgs::Marker::CUBE_LIST;
+    mk.action = visualization_msgs::Marker::ADD;
+    mk.id = 0;
+
+    mk.pose.orientation.x = 0.0;
+    mk.pose.orientation.y = 0.0;
+    mk.pose.orientation.z = 0.0;
+    mk.pose.orientation.w = 1.0;
+    mk.color.a = 0.15;
+    mk.color.r = 0.0;
+    mk.color.g = 1.0;
+    mk.color.b = 0.0;
+
+    mk.scale.x = resolution;
+    mk.scale.y = resolution;
+    mk.scale.z = resolution;
+
+    geometry_msgs::Point pt;
+    for (int i = 0; i < int(nodes.size()); i++)
+    {
+        Eigen::Vector3d coord = nodes[i]->coord;
+        pt.x = coord(0);
+        pt.y = coord(1);
+        pt.z = coord(2);
+
+        mk.points.push_back(pt);
+    }
+
+    visited_pub.publish(mk);
 }
 
 #endif
