@@ -210,8 +210,42 @@ void displayPath(vector<Eigen::Vector3d> grid_path, double resolution)
         idx++;
 
         path_pub.publish(mk);
-        ros::Duration(0.0001).sleep();
+        ros::Duration(0.001).sleep();
     }
+}
+
+void displayPathNodes(vector<GridNodePtr> grid_path, double resolution)
+{
+    visualization_msgs::Marker mk;
+    mk.header.frame_id = "world";
+    mk.header.stamp = ros::Time::now();
+    mk.type = visualization_msgs::Marker::SPHERE_LIST;
+    mk.action = visualization_msgs::Marker::ADD;
+    mk.id = 0;
+
+    mk.pose.orientation.x = 0.0;
+    mk.pose.orientation.y = 0.0;
+    mk.pose.orientation.z = 0.0;
+    mk.pose.orientation.w = 1.0;
+    mk.color.a = 1.0;
+    mk.color.r = 1.0;
+    mk.color.g = 0.0;
+    mk.color.b = 0.0;
+
+    mk.scale.x = 0.1;
+    mk.scale.y = 0.1;
+    mk.scale.z = 0.1;
+
+    geometry_msgs::Point pt;
+    for (int i = 0; i < int(grid_path.size()); i++)
+    {
+        pt.x = grid_path[i]->state(0);
+        pt.y = grid_path[i]->state(1);
+        pt.z = grid_path[i]->state(2);
+        mk.points.push_back(pt);
+    }
+    path_pub.publish(mk);
+    ros::Duration(0.001).sleep();
 }
 
 void displayVisitedNodes(vector<GridNodePtr> nodes, double resolution)

@@ -116,6 +116,7 @@ struct GridNode
    int id;        // 1--> open set, -1 --> closed set
    Eigen::Vector3d coord;
    Eigen::Vector3i index;
+   Eigen::VectorXd state;
    
    double gScore, fScore;
    GridNodePtr cameFrom;

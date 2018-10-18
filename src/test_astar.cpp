@@ -1,4 +1,5 @@
-#include "grad_spline/a_star.h"
+// #include "grad_spline/a_star.h"
+#include "grad_spline/hybrid_astar.h"
 #include "display.h"
 #include <ros/ros.h>
 
@@ -15,11 +16,13 @@ int main(int argc, char** argv)
     path_pub = node.advertise<visualization_msgs::Marker>("astar/path", 10);
     visited_pub = node.advertise<visualization_msgs::Marker>("astar/visited", 10);
 
+    ros::Duration(1.0).sleep();
+
     srand(ros::Time::now().toSec());
 
     // create a a_star path finder
-    double resolution = 0.1;
-    int map_size = 20;
+    double resolution = 0.2;
+    int map_size = 10;
     int index_size = map_size / resolution;
     Eigen::Vector3i global_size(index_size, index_size, index_size);
     gridPathFinder* path_finder =
@@ -28,7 +31,7 @@ int main(int argc, char** argv)
     Eigen::Vector3d origin;
     origin << -map_size / 2.0, -map_size / 2.0, 0.0;
     path_finder->initGridNodeMap(resolution, origin);
-    
+
     while (ros::ok())
     {
         // create a collision map for the path finder
@@ -59,8 +62,7 @@ int main(int argc, char** argv)
             pt(2) = 2.0;
 
             // ensure that obstacle is far enough from start and end
-            if ((pt - start).norm() < 1.0 || (pt - end).norm() < 1.0)
-                continue;
+            if ((pt - start).norm() < 2.0 || (pt - end).norm() < 2.0) continue;
 
             // ensure that each obstacle is far enough from others
             if (i == 0)
@@ -71,12 +73,11 @@ int main(int argc, char** argv)
             else
             {
                 double min_dist = 1000.0;
-                static double dist_thresh = 1.0;
+                static double dist_thresh = 1.6;
                 for (int j = 0; j < obstacles.size(); ++j)
                 {
                     double dist = (obstacles[j] - pt).norm();
-                    if (dist < min_dist)
-                        min_dist = dist;
+                    if (dist < min_dist) min_dist = dist;
                 }
                 if (min_dist > dist_thresh)
                 {
@@ -87,12 +88,11 @@ int main(int argc, char** argv)
                 else
                     ++fail_num;
             }
-            if (fail_num > 10000)
-                break;
+            if (fail_num > 10000) break;
         }
 
         // add the generated obstacles into collision map
-        const int th = 2;
+        const int th = 1;
         for (float z = 0; z < 3.5; z += resolution)
             for (int i = 0; i < obstacles.size(); ++i)
                 for (int m = -th; m <= th; m++)
@@ -123,15 +123,19 @@ int main(int argc, char** argv)
         // now we can do the path searching, get the path and visited node
         path_finder->AstarSearch(start, end);
         vector<Eigen::Vector3d> path = path_finder->getPath();
+        vector<GridNodePtr> path_nodes = path_finder->getPathNodes();
         vector<GridNodePtr> visited_nodes = path_finder->getVisitedNodes();
         path_finder->resetLocalMap();
 
-        displayPath(path, resolution);
+        // displayPath(path, resolution);
+        displayPathNodes(path_nodes, resolution);
         displayVisitedNodes(visited_nodes, resolution);
 
         delete collision_map;
 
-        // break;
+        ros::Duration(0.1).sleep();
+
+        break;
     }
 
     return 0;
