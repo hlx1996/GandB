@@ -132,8 +132,7 @@ int main(int argc, char** argv)
             pt(2) = 2.0;
 
             // ensure that obstacle is far enough from start and end
-            if ((pt - start).norm() < 1.0 || (pt - end).norm() < 1.0)
-                continue;
+            if ((pt - start).norm() < 1.0 || (pt - end).norm() < 1.0) continue;
 
             // ensure that obstacle is far enough from waypoint
             double dist_thresh = 0.4;
@@ -141,8 +140,7 @@ int main(int argc, char** argv)
             for (int j = 0; j < way_points.size(); ++j)
             {
                 double dist = (way_points[j] - pt).norm();
-                if (dist < min_dist)
-                    min_dist = dist;
+                if (dist < min_dist) min_dist = dist;
             }
 
             if (min_dist > dist_thresh)
@@ -160,8 +158,7 @@ int main(int argc, char** argv)
                     for (int j = 0; j < obstacles.size(); ++j)
                     {
                         double dist = (obstacles[j] - pt).norm();
-                        if (dist < min_dist)
-                            min_dist = dist;
+                        if (dist < min_dist) min_dist = dist;
                     }
 
                     if (min_dist > dist_thresh)
@@ -215,11 +212,16 @@ int main(int argc, char** argv)
         visualization_pub.publish(collision_map_marker);
 
         // Build the signed distance field
+        ros::Time t1 = ros::Time::now();
+
         float oob_value = INFINITY;
         std::pair<sdf_tools::SignedDistanceField, std::pair<double, double>> sdf_with_extrema =
             collision_map.ExtractSignedDistanceField(oob_value);
-
         sdf_tools::SignedDistanceField sdf = sdf_with_extrema.first;
+
+        ros::Time t2 = ros::Time::now();
+
+        cout << "Time for building distance field:" << (t2 - t1).toSec() << endl;
         cout << "----------------------Signed distance field build!----------------------" << endl;
 
         // ---------------------main optimization procedure---------------------
@@ -257,8 +259,7 @@ int main(int argc, char** argv)
             displayTrajectory(bspline);
         }
 
-        if (!isloop)
-            break;
+        if (!isloop) break;
         ros::Duration(2.0).sleep();
     }
 

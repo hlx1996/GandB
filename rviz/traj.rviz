@@ -117,13 +117,13 @@ Visualization Manager:
       Queue Size: 1000
       Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /astar/visited
       Name: visited
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /primitive/path
@@ -167,11 +167,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 89.7147827
+      Scale: 88.4228897
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 0.0911593214
-      Y: 0.065718852
+      X: 0.170324326
+      Y: -0.556291938
     Saved: ~
 Window Geometry:
   Displays:

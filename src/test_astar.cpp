@@ -48,15 +48,20 @@ int main(int argc, char** argv)
         int obs_num = 50;
         vector<Eigen::Vector3d> obstacles;
         Eigen::Vector3d start, end;
-        start(0) = start(1) = -4.0;
-        end(0) = end(1) = 4.0;
-        start(2) = end(2) = 2.0;
+        start(0) = start(1) = -4.0 + 1e-3;
+        end(0) = 4.0 + 1e-3;
+        end(1) = 4.0 + 1e-3;
+        start(2) = end(2) = 2.0 + 1e-3;
+
+        // add a obstacle near start
+        Eigen::Vector3d pt;
+        pt << -3.5, -3.5, 2.0;
+        obstacles.push_back(pt);
 
         int fail_num = 0;
         for (int i = 0; i < obs_num;)
         {
             // randomly create a obstacle point
-            Eigen::Vector3d pt;
             pt(0) = -3.5 + 7.0 * rand() / double(RAND_MAX);
             pt(1) = -3.5 + 7.0 * rand() / double(RAND_MAX);
             pt(2) = 2.0;
@@ -121,14 +126,17 @@ int main(int argc, char** argv)
         path_finder->linkLocalMap(collision_map, origin);
 
         // now we can do the path searching, get the path and visited node
-        path_finder->AstarSearch(start, end);
+        Eigen::Vector3d sv, ev;
+        sv << 0.0, 1.5, 0.0;
+        path_finder->AstarSearch(start, sv, end, ev);
         vector<Eigen::Vector3d> path = path_finder->getPath();
         vector<GridNodePtr> path_nodes = path_finder->getPathNodes();
         vector<GridNodePtr> visited_nodes = path_finder->getVisitedNodes();
+        vector<Eigen::Vector3d> kino_path = path_finder->getKinoTraj(0.01);
+
         path_finder->resetLocalMap();
 
-        // displayPath(path, resolution);
-        displayPathNodes(path_nodes, resolution);
+        displayPath(kino_path, resolution * 0.25);
         displayVisitedNodes(visited_nodes, resolution);
 
         delete collision_map;

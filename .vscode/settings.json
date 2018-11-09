@@ -50,6 +50,7 @@
         "type_traits": "cpp",
         "tuple": "cpp",
         "typeindex": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "unordered_set": "cpp"
     }
 }
