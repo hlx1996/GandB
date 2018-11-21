@@ -11,13 +11,13 @@
 #include <vector>
 #include <stdlib.h>
 
-#include "grad_spline/uniform_bspline.h"
+// #include "grad_spline/uniform_bspline.h"
 #include "grad_spline/data_type.h"
 
 using std::vector;
 
-Eigen::VectorXd my_time;
-int point_num;
+// Eigen::VectorXd my_time;
+// int point_num;
 
 ros::Publisher setpoint_pub;
 ros::Publisher traj_pub;
@@ -104,22 +104,9 @@ void visualizePoints(Eigen::MatrixXd points)
     }
 }
 
-// use uniform bspline to draw trajectory
-void displayTrajectory(UniformBspline bspline)
+void displayPathWithTime(Eigen::MatrixXd path)
 {
-    nav_msgs::Path path;
-    path.header.frame_id = "world";
-    path.header.stamp = ros::Time::now();
-
-    // publish these point
-    double u1, u2;
-    bspline.getRegion(u1, u2);
-    double u = u1;
-    UniformBspline vel = bspline.getDerivative();
-    UniformBspline acc = vel.getDerivative();
-
     ros::Time start = ros::Time::now();
-
     // start msg
     nav_msgs::Odometry odom;
     odom.header.frame_id = "world";
@@ -129,42 +116,24 @@ void displayTrajectory(UniformBspline bspline)
     odom.pose.pose.position.z = -1.0;
     va_pub.publish(odom);
 
-    while (u <= u2)
+    // publish the whole trajectory
+    for (int i = 1; i < int(path.cols()); ++i)
     {
-        // publish the whole trajectory
-        Eigen::Vector3d val = bspline.evaluate(u);
-        geometry_msgs::PoseStamped pose;
-        pose.header.frame_id = "world";
-
-        pose.pose.position.x = val(0);
-        pose.pose.position.y = val(1);
-        pose.pose.position.z = val(2);
-
-        pose.pose.orientation.w = 1;
-        pose.pose.orientation.x = 0;
-        pose.pose.orientation.y = 0;
-        pose.pose.orientation.z = 0;
-
-        path.poses.push_back(pose);
-
-        // publish the velocity and acceleration
-        Eigen::Vector3d v = vel.evaluate(u);
-        Eigen::Vector3d a = acc.evaluate(u);
-
-        nav_msgs::Odometry odom;
         odom.header.frame_id = "world";
-        odom.header.stamp = ros::Time(u);
+        odom.header.stamp = ros::Time(path(0, i));
         // odom.header.stamp = ros::Time::now();
-        odom.pose.pose.position.x = v(0);
-        odom.pose.pose.position.y = v(1);
-        odom.pose.pose.position.z = v(2);
-        odom.twist.twist.linear.x = a(0);
-        odom.twist.twist.linear.y = a(1);
-        odom.twist.twist.linear.z = a(2);
+        odom.pose.pose.position.x = path(1, i);
+        odom.pose.pose.position.y = path(2, i);
+        odom.pose.pose.position.z = path(3, i);
+        odom.twist.twist.linear.x = (path(1, i) - path(1, i - 1)) / (path(0, i) - path(0, i - 1));
+        odom.twist.twist.linear.y = (path(2, i) - path(2, i - 1)) / (path(0, i) - path(0, i - 1));
+        odom.twist.twist.linear.z = (path(3, i) - path(3, i - 1)) / (path(0, i) - path(0, i - 1));
         va_pub.publish(odom);
         ros::Duration(0.001).sleep();
 
-        u += 0.01;
+        std::cout << "position:" << path.col(i).transpose() << std::endl;
+        std::cout << "velocity:" << (path.col(i) - path.col(i - 1)).transpose() / (path(0, i) - path(0, i - 1)) << std::endl;
+        std::cout << std::endl;
     }
 
     odom.header.frame_id = "world";
@@ -173,9 +142,8 @@ void displayTrajectory(UniformBspline bspline)
     odom.pose.pose.position.y = 1.0;
     odom.pose.pose.position.z = 1.0;
     va_pub.publish(odom);
-
-    traj_pub.publish(path);
 }
+
 
 void displayPath(vector<Eigen::Vector3d> path, double resolution)
 {
@@ -194,6 +162,66 @@ void displayPath(vector<Eigen::Vector3d> path, double resolution)
     mk.color.r = 1.0;
     mk.color.g = 0.0;
     mk.color.b = 0.0;
+
+    mk.scale.x = resolution;
+    mk.scale.y = resolution;
+    mk.scale.z = resolution;
+
+    geometry_msgs::Point pt;
+    for (int i = 0; i < int(path.size()); i++)
+    {
+        pt.x = path[i](0);
+        pt.y = path[i](1);
+        pt.z = path[i](2);
+        mk.points.push_back(pt);
+    }
+    path_pub.publish(mk);
+    ros::Duration(0.001).sleep();
+}
+
+// color 1234, rgby, resolution = 0.05
+void displayPathWithColor(vector<Eigen::Vector3d> path, double resolution, int color, int id)
+{
+    visualization_msgs::Marker mk;
+    mk.header.frame_id = "world";
+    mk.header.stamp = ros::Time::now();
+    mk.type = visualization_msgs::Marker::SPHERE_LIST;
+    mk.action = visualization_msgs::Marker::DELETE;
+    mk.id = id;
+
+    path_pub.publish(mk);
+
+    mk.action = visualization_msgs::Marker::ADD;
+    mk.pose.orientation.x = 0.0;
+    mk.pose.orientation.y = 0.0;
+    mk.pose.orientation.z = 0.0;
+    mk.pose.orientation.w = 1.0;
+    mk.color.a = 1.0;
+
+    if (color == 1)
+    {
+        mk.color.r = 1.0;
+        mk.color.g = 0.0;
+        mk.color.b = 0.0;
+    }
+    else if (color == 2)
+    {
+        mk.color.g = 1.0;
+        mk.color.r = 0.0;
+        mk.color.b = 0.0;
+    }
+    else if (color == 3)
+    {
+        mk.color.b = 1.0;
+        mk.color.g = 0.0;
+        mk.color.r = 0.0;
+    }
+    else if (color == 4)
+    {
+        mk.color.g = 1.0;
+        mk.color.r = 1.0;
+        mk.color.b = 0.0;
+    }
 
     mk.scale.x = resolution;
     mk.scale.y = resolution;

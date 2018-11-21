@@ -30,12 +30,14 @@ include_directories(
 add_executable(bspline src/bspline.cpp)
 target_link_libraries(bspline ${catkin_LIBRARIES})
 
-add_executable(random src/example_random.cpp src/grad_band_optimizer.cpp)
-target_link_libraries(random ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/third_party/sdf_tools/lib/libsdf_tools.so
-${NLopt_LIBRARIES} /usr/local/lib/libnlopt.so)
+# add_executable(random src/example_random.cpp src/grad_band_optimizer.cpp)
+# target_link_libraries(random ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/third_party/sdf_tools/lib/libsdf_tools.so
+# ${NLopt_LIBRARIES} /usr/local/lib/libnlopt.so)
 
 add_executable(astar src/test_astar.cpp src/hybrid_astar.cpp)
 target_link_libraries(astar ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/third_party/sdf_tools/lib/libsdf_tools.so)
 
-add_executable(state_transit test/state_transition.cpp)
+add_executable(state_transit src/state_transition.cpp)
 target_link_libraries(state_transit ${catkin_LIBRARIES})
+# add_executable(least_square test/least_square.cpp)
+# target_link_libraries(least_square ${catkin_LIBRARIES})

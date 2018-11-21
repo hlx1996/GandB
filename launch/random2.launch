@@ -1,5 +1,6 @@
 <launch>
   <node name="random" pkg="grad_spline" type="random" output="screen">
+
     <param name="alpha" value="0.9" type="double"/>
     <param name="beta" value="1.0" type="double"/>
     <param name="lamda1" value="1.0" type="double"/>
@@ -8,18 +9,18 @@
     <param name="dist0" value="0.7" type="double"/>
     <param name="pow1" value="2" type="int"/>
     <param name="pow2" value="2" type="int"/>
-    <param name="min_step" value="0.2" type="double"/>
-    <param name="max_step" value="0.4" type="double"/>
-    <param name="obs_th" value="1.5" type="double"/>
+    <param name="scale" value="1.0" type="double"/>
+    <param name="point_opti_num" value="50" type="int"/>
+    <!-- <param name="algorithm" value="31 33 40 41" type="int"/> -->
+    <param name="algorithm" value="11" type="int"/>
     <param name="max_vel" value="2.5" type="double"/>
     <param name="max_acc" value="3.0" type="double"/>
     <param name="interval" value="0.4" type="double"/>
 
+    <param name="min_step" value="0.2" type="double"/>
+    <param name="max_step" value="0.4" type="double"/>
+    <param name="obs_th" value="1.5" type="double"/>
     <param name="opti_num" value="1" type="int"/>
-    <param name="point_opti_num" value="50" type="int"/>
-    <param name="algorithm" value="11" type="int"/>
-    <!-- <param name="algorithm" value="31 33 40 41" type="int"/> -->
-    <param name="scale" value="1.0" type="double"/>
     <param name="sleep" value="0.001" type="double"/>
     <param name="solver" value="3" type="int"/>
     <param name="loop" value="1" type="int"/>

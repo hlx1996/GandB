@@ -1,5 +1,6 @@
 // #include "grad_spline/a_star.h"
 #include "grad_spline/hybrid_astar.h"
+#include "grad_spline/uniform_bspline.h"
 #include "display.h"
 #include <ros/ros.h>
 
@@ -12,6 +13,7 @@ int main(int argc, char** argv)
 
     ros::Publisher visualization_pub =
         node.advertise<visualization_msgs::Marker>("sdf_tools_tutorial_visualization", 1, true);
+    va_pub = node.advertise<nav_msgs::Odometry>("trajopt/odom", 10);
 
     path_pub = node.advertise<visualization_msgs::Marker>("astar/path", 10);
     visited_pub = node.advertise<visualization_msgs::Marker>("astar/visited", 10);
@@ -26,8 +28,8 @@ int main(int argc, char** argv)
     int index_size = map_size / resolution;
     Eigen::Vector3i global_size(index_size, index_size, index_size);
     gridPathFinder* path_finder =
-        new gridPathFinder(global_size, global_size);  // the global and local size are equal, which means the whole
-                                                       // grid have occupancy info
+        new gridPathFinder(global_size, global_size, node);  // the global and local size are equal, which means the
+                                                             // whole grid have occupancy info
     Eigen::Vector3d origin;
     origin << -map_size / 2.0, -map_size / 2.0, 0.0;
     path_finder->initGridNodeMap(resolution, origin);
@@ -50,7 +52,7 @@ int main(int argc, char** argv)
         Eigen::Vector3d start, end;
         start(0) = start(1) = -4.0 + 1e-3;
         end(0) = 4.0 + 1e-3;
-        end(1) = 4.0 + 1e-3;
+        end(1) = 0.0 + 1e-3;
         start(2) = end(2) = 2.0 + 1e-3;
 
         // add a obstacle near start
@@ -128,18 +130,70 @@ int main(int argc, char** argv)
         // now we can do the path searching, get the path and visited node
         Eigen::Vector3d sv, ev;
         sv << 0.0, 1.5, 0.0;
+        ev << 0.5, 0.2, 0.0;
         path_finder->AstarSearch(start, sv, end, ev);
-        vector<Eigen::Vector3d> path = path_finder->getPath();
+        // vector<Eigen::Vector3d> path = path_finder->getPath();
+        cout << "1" << endl;
         vector<GridNodePtr> path_nodes = path_finder->getPathNodes();
+        cout << "2" << endl;
         vector<GridNodePtr> visited_nodes = path_finder->getVisitedNodes();
+        cout << "3" << endl;
         vector<Eigen::Vector3d> kino_path = path_finder->getKinoTraj(0.01);
+        cout << "4" << endl;
 
-        path_finder->resetLocalMap();
-
-        displayPath(kino_path, resolution * 0.25);
+        displayPathWithColor(kino_path, resolution * 0.25, 1, 1);
         displayVisitedNodes(visited_nodes, resolution);
 
+        // display the start and end points
+        vector<Eigen::Vector3d> start_end;
+        start_end.push_back(start);
+        start_end.push_back(end);
+        displayPathWithColor(start_end, 0.15, 2, 2);
+
         delete collision_map;
+
+        // // convert the path into b-spline using least square, N = 4,ts = 0.5
+        // ros::Time t1 = ros::Time::now();
+
+        // int N = 4, K;
+        // double ts = 0.1;
+
+        // Eigen::MatrixXd samples = path_finder->getSamples(ts, K, N);
+
+        // Eigen::MatrixXd control_pts;
+        // getControlPointLeastSquare(K, N, ts, samples.block(1, 0, 3, (N + 1) * (K + 1)), control_pts);
+
+        // ros::Time t2 = ros::Time::now();
+        // cout << "least square time:" << (t2 - t1).toSec() << endl;
+
+        // // draw the bspline
+        // UniformBspline bspline(control_pts, 5, ts, false);
+        // vector<Eigen::Vector3d> path_bspline;
+        // double total_t = ts * (K + 1);
+        // for (double t = 0.0; t <= total_t; t += 0.02)
+        // {
+        //     Eigen::Vector3d pt = bspline.evaluate(t);
+        //     path_bspline.push_back(pt);
+        // }
+        // displayPathWithColor(path_bspline, 0.05, 3, 3);
+
+        // // draw the control point
+        // vector<Eigen::Vector3d> ctp;
+        // for (int i = 0; i < int(control_pts.rows()); ++i)
+        // {
+        //     Eigen::Vector3d pt = control_pts.row(i).transpose();
+        //     ctp.push_back(pt);
+        // }
+        // displayPathWithColor(ctp, 0.15, 4, 4);
+        // cout << "control pt num:" << ctp.size() << endl;
+
+        // // draw the first and last segment control point
+        // ctp.erase(ctp.begin() + 6, ctp.end() - 6);
+        // displayPathWithColor(ctp, 0.25, 5, 1);
+        // cout << "cut pt num:" << ctp.size() << endl;
+
+        // clear path finder
+        path_finder->resetLocalMap();
 
         ros::Duration(0.1).sleep();
 

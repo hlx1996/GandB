@@ -30,7 +30,7 @@ We aim to solve the pose to pose planning problem. During the flying, the uav sh
 * Kinodynamic search
 
 
-## Result
+## Result and Plan Log
  - SQP, around from 20-100 ms, result is good, but very slow if number of points is large(50 points, 100ms)
  - constrained slow down SQP (usually double the time)
  - LBFGS is very fast and almost always show good result. Besides it does not get much slower as the number of points increase(50 pts, 1ms; about 100pts, 2ms).
@@ -39,3 +39,38 @@ We aim to solve the pose to pose planning problem. During the flying, the uav sh
  SDF:
  - sdf_tools: 1000ms for 200x200x50
  - sample function:  for 128x128x128
+
+ ### hybrid a star:
+
+ - when new neighbor localize in the same grid, we need to compare _fscore_ instead of _gscore_
+ - no need to constrain neighbor state in neighbor grid (major difference with a star) 
+ - currently exclude new state in the same grid
+
+
+### conversion between hybrid astar trajectory and b-spline 
+
+<!-- - The interval of the b-spline should first selected -> ts
+- divide every segment of the b-spline into N parts, each part has the time length of tm = ts/N -> N
+- sample at j x tm and get some sample points from the trajectory  
+- use this points for least squares problem, solved using Eigen
+- when N = 4, i.e., we have 5 sample points for each b-spline segment, the matrix of control point is
+[[ 0.00833333333333333       , 0.216666666666667,  0.55, + 0.216666666666667, 0.00833333333333333, 0.0]]
+[[ 0.0019775390625           , 0.124910481770833,  0.519645182291667        , 0.328076171875     , + 0.0253824869791667, 0.0]]
+[[ 0.000260416666666667      , 0.06171875       ,  0.438020833333333        , 0.438020833333333  , + 0.06171875,  0.000260416666666667]]
+[[ 0, + 0.0253824869791667   , 0.328076171875   ,  0.519645182291667        , 0.124910481770833  , + 0.0019775390625]]
+[[ 0.0,   0.00833333333333331, 0.216666666666667,  0.55,   0.216666666666667, 0.00833333333333333]]
+
+emmm...this does not work.. because you use a high order polynomial to fit a linear function and a piece-constant function. So the result is ill-conditioning. -->
+
+- using jerk as input in the path searching stage, and use the same time .
+- convert the monomial polynomial to b-spline
+- one shot can be improved
+
+
+
+
+ ### Plan
+
+ - replace signed distance field using the sample function method
+ - conversion between bybrid Astar trajectory and b-spline
+ - hybrid a star in sdf

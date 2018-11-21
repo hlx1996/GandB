@@ -4,7 +4,7 @@ import math
 
 '''
     This script implement a b-spline class, which is initialize by some control point which is initialized by some control points and order p
-    It is a general class for b-spline, so the knots vector is not necessarily uniform.
+    It is a general class for b-spline
     We also use the general matrix representation to compute the b-spline, instead of using the precomputed coefficient
     The derivative of the b-spline can also be computed, since the derivative is also an b-spline
     auto_extend is used when the first and last control points need to be repeated p times. This is not need when create derivative 
