@@ -14,8 +14,6 @@ void gridPathFinder::initGridNodeMap(double _resolution, Vector3d global_xyz_l)
     resolution = _resolution;
     inv_resolution = 1.0 / _resolution;
 
-    w_time = 30;
-
     GridNodeMap = new GridNodePtr**[GLX_SIZE];
     for (int i = 0; i < GLX_SIZE; i++)
     {
@@ -453,88 +451,99 @@ void gridPathFinder::getNeighbor(GridNodePtr current_node, GridNodePtr end_node,
             for (double az = -max_acc; az <= max_acc + 1e-3; az += max_acc * res)
             {
                 um << ax, ay, az;
-                for (double tau = max_tau * time_res; tau <= max_tau + 1e-3; tau += max_tau * time_res)
+                // state transit
+                Eigen::VectorXd x1;
+
+                stateTransit1(state, x1, um, max_tau);
+                // jerkInputStateTransit(state, x1, um, max_tau);
+
+                // display the transit
+                // ros::Time t1 = ros::Time::now();
+                // static int id_temp = 0;
+                // vector<Eigen::Vector3d> path_temp;
+                // for (double dt = 0; dt < max_tau + 1e-3; dt += 0.02)
+                // {
+                //     Eigen::VectorXd xt;
+                //     // jerkInputStateTransit(state, xt, um, dt);
+                //     stateTransit1(state, xt, um, dt);
+                //     path_temp.push_back(xt.head(3));
+                // }
+                // displayPathWithColor(path_temp, 0.01, 1, id_temp);
+                // ++id_temp;
+                // ros::Time t2 = ros::Time::now();
+                // vis_time += (t2 - t1).toSec();
+
+                // cout << "state:" << x1.transpose() << endl;
+
+                // stay in local range
+                Eigen::Vector3i idx1 = coord2gridIndex(x1.head(3));
+                if (idx1(0) < 0 || idx1(0) >= GLX_SIZE || idx1(1) < 0 || idx1(1) >= GLY_SIZE || idx1(2) < 0 ||
+                    idx1(2) >= GLZ_SIZE)
                 {
-                    // state transit
-                    Eigen::VectorXd x1;
+                    // cout << "not in range" << endl;
+                    break;
+                }
 
-                    stateTransit1(state, x1, um, tau);
-                    // jerkInputStateTransit(state, x1, um, tau);
+                // vel feasible
+                Eigen::Vector3d v1 = x1.segment(3, 3);
+                if (fabs(v1(0)) > max_vel || fabs(v1(1)) > max_vel || fabs(v1(2)) > max_vel)
+                {
+                    // cout << "vel end not feasible" << endl;
+                    break;
+                }
 
-                    // display the transit
-                    // ros::Time t1 = ros::Time::now();
-                    // static int id_temp = 0;
-                    // vector<Eigen::Vector3d> path_temp;
-                    // for (double dt = 0; dt < tau + 1e-3; dt += 0.02)
-                    // {
-                    //     Eigen::VectorXd xt;
-                    //     // jerkInputStateTransit(state, xt, um, dt);
-                    //     stateTransit1(state, xt, um, dt);
-                    //     path_temp.push_back(xt.head(3));
-                    // }
-                    // displayPathWithColor(path_temp, 0.01, 1, id_temp);
-                    // ++id_temp;
-                    // ros::Time t2 = ros::Time::now();
-                    // vis_time += (t2 - t1).toSec();
+                // check if it is neighbor
+                Eigen::Vector3i diff = idx1 - current_node->index;
+                if (diff.norm() == 0) continue;
+                // cout << "neighbor:" << diff.transpose() << endl;
 
-                    // cout << "state:" << x1.transpose() << endl;
-
-                    // stay in local range
-                    Eigen::Vector3i idx1 = coord2gridIndex(x1.head(3));
-                    if (idx1(0) < 0 || idx1(0) >= GLX_SIZE || idx1(1) < 0 || idx1(1) >= GLY_SIZE || idx1(2) < 0 ||
-                        idx1(2) >= GLZ_SIZE)
-                    {
-                        // cout << "not in range" << endl;
-                        break;
-                    }
-
-                    // collision free
-                    nptr = GridNodeMap[idx1(0)][idx1(1)][idx1(2)];
+                // collision free
+                Eigen::Vector3i idt;
+                Eigen::VectorXd xt;
+                double delta_tau = 0.2 * max_tau;
+                bool is_occ = false;
+                for (double dt = delta_tau; dt < max_tau + 1e-3; dt += delta_tau)
+                {
+                    // jerkInputStateTransit(state, xt, um, dt);
+                    stateTransit1(state, xt, um, dt);
+                    idt = coord2gridIndex(xt.head(3));
+                    nptr = GridNodeMap[idt(0)][idt(1)][idt(2)];
                     if (nptr->occupancy > 0.5)
                     {
-                        // cout << "obstacle" << endl;
+                        // cout << "\nobstacle:" << endl;
+                        // cout << "state:" << xt.head(3).transpose() << ", id:" << idt.transpose() << endl;
+                        is_occ = true;
                         break;
                     }
+                }
+                if (is_occ) break;
 
-                    // vel feasible
-                    Eigen::Vector3d v1 = x1.segment(3, 3);
-                    if (fabs(v1(0)) > max_vel || fabs(v1(1)) > max_vel || fabs(v1(2)) > max_vel)
+                // caluculate f_score
+                double optimal_time;
+                KinoState candidate;
+                candidate.edge_cost = (um.squaredNorm() + w_time) * max_tau;
+                candidate.heu = getKinoDynamicHeu(x1, end_node->state, optimal_time);
+                candidate.optimal_time = optimal_time;
+                candidate.state = x1;
+                candidate.input = um;
+                candidate.duration = max_tau;
+
+                KinoState exist_neighbor;
+                // if not found, insert it directly
+                if (!neighbors.find(diff, exist_neighbor))
+                {
+                    neighbors.add(diff, candidate);
+                    // cout << "add new " << endl;
+                }
+                else  // compare the edge_cost + heu_cost
+                {
+                    bool replace =
+                        (candidate.edge_cost + candidate.heu) < (exist_neighbor.edge_cost + exist_neighbor.heu);
+                    if (replace)
                     {
-                        // cout << "vel end not feasible" << endl;
-                        break;
-                    }
-
-                    // check if it is neighbor
-                    Eigen::Vector3i diff = idx1 - current_node->index;
-                    if (diff.norm() == 0) continue;
-                    // cout << "neighbor:" << diff.transpose() << endl;
-                    // caluculate f_score
-                    double optimal_time;
-                    KinoState candidate;
-                    candidate.edge_cost = (um.squaredNorm() + w_time) * tau;
-                    candidate.heu = getKinoDynamicHeu(x1, end_node->state, optimal_time);
-                    candidate.optimal_time = optimal_time;
-                    candidate.state = x1;
-                    candidate.input = um;
-                    candidate.duration = tau;
-
-                    KinoState exist_neighbor;
-                    // if not found, insert it directly
-                    if (!neighbors.find(diff, exist_neighbor))
-                    {
+                        neighbors.erase(diff);
                         neighbors.add(diff, candidate);
-                        // cout << "add new " << endl;
-                    }
-                    else  // compare the edge_cost + heu_cost
-                    {
-                        bool replace =
-                            (candidate.edge_cost + candidate.heu) < (exist_neighbor.edge_cost + exist_neighbor.heu);
-                        if (replace)
-                        {
-                            neighbors.erase(diff);
-                            neighbors.add(diff, candidate);
-                            // cout << "replace" << endl;
-                        }
+                        // cout << "replace" << endl;
                     }
                 }
             }

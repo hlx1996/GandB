@@ -145,6 +145,8 @@ class gridPathFinder
 
         // path publisher
         path_pub = node.advertise<visualization_msgs::Marker>("hybridastar/path", 10);
+
+        w_time = 5.0;
     };
     gridPathFinder(){};
     ~gridPathFinder(){};
