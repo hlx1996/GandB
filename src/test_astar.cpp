@@ -133,13 +133,9 @@ int main(int argc, char** argv)
         ev << 0.5, 0.2, 0.0;
         path_finder->AstarSearch(start, sv, end, ev);
         // vector<Eigen::Vector3d> path = path_finder->getPath();
-        cout << "1" << endl;
         vector<GridNodePtr> path_nodes = path_finder->getPathNodes();
-        cout << "2" << endl;
         vector<GridNodePtr> visited_nodes = path_finder->getVisitedNodes();
-        cout << "3" << endl;
         vector<Eigen::Vector3d> kino_path = path_finder->getKinoTraj(0.01);
-        cout << "4" << endl;
 
         displayPathWithColor(kino_path, resolution * 0.25, 1, 1);
         displayVisitedNodes(visited_nodes, resolution);

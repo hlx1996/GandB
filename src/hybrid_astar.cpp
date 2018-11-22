@@ -91,9 +91,9 @@ GridNodePtr gridPathFinder::pos2gridNodePtr(Vector3d pos)
     Vector3i idx = coord2gridIndex(pos);
     GridNodePtr grid_ptr = new GridNode(idx, pos);
 
-    Eigen::VectorXd state(9);
+    Eigen::VectorXd state(6);
     state.head(3) = pos;
-    state.tail(6) = Eigen::Vector3d::Zero();
+    state.tail(3) = Eigen::Vector3d::Zero();
     grid_ptr->state = state;
 
     return grid_ptr;
@@ -221,10 +221,10 @@ void gridPathFinder::AstarSearch(Vector3d start_pt, Vector3d start_vel, Vector3d
 
     startPtr->state.head(3) = start_pt;
     startPtr->state.segment(3, 3) = start_vel;
-    startPtr->state.tail(3) = Eigen::Vector3d::Zero(3);
+    // startPtr->state.tail(3) = Eigen::Vector3d::Zero(3);
     endPtr->state.head(3) = end_pt;
     endPtr->state.segment(3, 3) = end_vel;
-    endPtr->state.tail(3) = Eigen::Vector3d::Zero(3);
+    // endPtr->state.tail(3) = Eigen::Vector3d::Zero(3);
 
     startPtr->gScore = 0;
     startPtr->fScore = getKinoDynamicHeu(startPtr, endPtr);
@@ -253,7 +253,7 @@ void gridPathFinder::AstarSearch(Vector3d start_pt, Vector3d start_vel, Vector3d
         ++num_iter;
         current_node = openSet.begin()->second;
 
-        int difference = 4;
+        int difference = 5;
         if (abs(current_node->index(0) - endPtr->index(0)) <= difference &&
             abs(current_node->index(1) - endPtr->index(1)) <= difference &&
             abs(current_node->index(2) - endPtr->index(2)) <= difference)
@@ -270,14 +270,13 @@ void gridPathFinder::AstarSearch(Vector3d start_pt, Vector3d start_vel, Vector3d
             has_path = true;
             return;
         }
-
         openSet.erase(openSet.begin());
         current_node->id = -1;  // move node from open to closed set.
         expandedNodes.push_back(current_node);
 
         // get the state of current node
         Eigen::VectorXd state = current_node->state;
-        cout << "\ncurernt state:" << state.transpose() << endl;
+        // cout << "\ncurernt state:" << state.transpose() << endl;
 
         // get neighbor of this node
         Neighbors neighbors;
@@ -295,7 +294,6 @@ void gridPathFinder::AstarSearch(Vector3d start_pt, Vector3d start_vel, Vector3d
             neighbor_idx(2) = current_node->index(2) + diff(2);
 
             KinoState neighbor = neighbor_data[i].second;
-
             neighbor_ptr = GridNodeMap[neighbor_idx(0)][neighbor_idx(1)][neighbor_idx(2)];
 
             double edge_cost = neighbor.edge_cost;
@@ -306,7 +304,6 @@ void gridPathFinder::AstarSearch(Vector3d start_pt, Vector3d start_vel, Vector3d
             Eigen::VectorXd x1 = neighbor.state;
 
             tentative_gScore = current_node->gScore + edge_cost;
-
             if (neighbor_ptr->index == current_node->index)  // in the same grid, need compare
             {
                 double current_fscore = current_node->fScore;
@@ -402,10 +399,7 @@ void gridPathFinder::stateTransit1(Eigen::VectorXd init_state, Eigen::VectorXd& 
                                    double tau)
 {
     // build the state transition matrix phi(tau)
-    Eigen::MatrixXd phi(6, 6);
-    phi.block(3, 0, 3, 3) = Eigen::MatrixXd::Zero(3, 3);
-    phi.block(0, 0, 3, 3) = phi.block(3, 3, 3, 3) = Eigen::MatrixXd::Identity(3, 3);
-    phi.block(0, 3, 3, 3) = tau * Eigen::MatrixXd::Identity(3, 3);
+    for (int i = 0; i < 3; ++i) phi(i, i + 3) = tau;
 
     // cout << "phi:\n" << phi << endl;
 
@@ -415,8 +409,7 @@ void gridPathFinder::stateTransit1(Eigen::VectorXd init_state, Eigen::VectorXd& 
     integral.tail(3) = tau * um;
     // cout << "integral:\n" << integral << endl;
 
-    final_state.head(6) = phi * init_state.head(6) + integral;
-    final_state.tail(3) = Eigen::Vector3d::Zero(3);
+    final_state = phi * init_state + integral;
     // cout << "The final state is:\n" << final_state.transpose() << endl << endl;
 }
 
@@ -455,33 +448,34 @@ void gridPathFinder::getNeighbor(GridNodePtr current_node, GridNodePtr end_node,
     Eigen::Vector3d um;
     double res = 1 / 2.0, time_res = 1 / 1.0;
     int pri_num = 0;
-    for (double jx = -max_jerk; jx <= max_jerk + 1e-3; jx += max_jerk * res)
-        for (double jy = -max_jerk; jy <= max_jerk + 1e-3; jy += max_jerk * res)
-            for (double jz = -max_jerk; jz <= max_jerk + 1e-3; jz += max_jerk * res)
+    for (double ax = -max_acc; ax <= max_acc + 1e-3; ax += max_acc * res)
+        for (double ay = -max_acc; ay <= max_acc + 1e-3; ay += max_acc * res)
+            for (double az = -max_acc; az <= max_acc + 1e-3; az += max_acc * res)
             {
-                um << jx, jy, jz;
+                um << ax, ay, az;
                 for (double tau = max_tau * time_res; tau <= max_tau + 1e-3; tau += max_tau * time_res)
                 {
                     // state transit
                     Eigen::VectorXd x1;
-                    // stateTransit1(state, x1, um, tau);
-                    jerkInputStateTransit(state, x1, um, tau);
+
+                    stateTransit1(state, x1, um, tau);
+                    // jerkInputStateTransit(state, x1, um, tau);
 
                     // display the transit
-                    ros::Time t1 = ros::Time::now();
-                    static int id_temp = 0;
-                    vector<Eigen::Vector3d> path_temp;
-                    for (double dt = 0.01; dt < tau; dt += 0.01)
-                    {
-                        Eigen::VectorXd xt;
-                        jerkInputStateTransit(state, xt, um, dt);
-                        path_temp.push_back(xt.head(3));
-                    }
-                    displayPathWithColor(path_temp, 0.01, 1, id_temp);
-
-                    ++id_temp;
-                    ros::Time t2 = ros::Time::now();
-                    vis_time += (t2 - t1).toSec();
+                    // ros::Time t1 = ros::Time::now();
+                    // static int id_temp = 0;
+                    // vector<Eigen::Vector3d> path_temp;
+                    // for (double dt = 0; dt < tau + 1e-3; dt += 0.02)
+                    // {
+                    //     Eigen::VectorXd xt;
+                    //     // jerkInputStateTransit(state, xt, um, dt);
+                    //     stateTransit1(state, xt, um, dt);
+                    //     path_temp.push_back(xt.head(3));
+                    // }
+                    // displayPathWithColor(path_temp, 0.01, 1, id_temp);
+                    // ++id_temp;
+                    // ros::Time t2 = ros::Time::now();
+                    // vis_time += (t2 - t1).toSec();
 
                     // cout << "state:" << x1.transpose() << endl;
 
@@ -489,43 +483,31 @@ void gridPathFinder::getNeighbor(GridNodePtr current_node, GridNodePtr end_node,
                     Eigen::Vector3i idx1 = coord2gridIndex(x1.head(3));
                     if (idx1(0) < 0 || idx1(0) >= GLX_SIZE || idx1(1) < 0 || idx1(1) >= GLY_SIZE || idx1(2) < 0 ||
                         idx1(2) >= GLZ_SIZE)
+                    {
+                        // cout << "not in range" << endl;
                         break;
-
-                    // cout << "In range" << endl;
+                    }
 
                     // collision free
                     nptr = GridNodeMap[idx1(0)][idx1(1)][idx1(2)];
-                    if (nptr->occupancy > 0.5) break;
-
-                    // cout << "free" << endl;
-
-                    // acc feasible
-                    Eigen::Vector3d a1 = x1.tail(3), a0 = state.tail(3);
-                    if (fabs(a1(0)) > max_acc || fabs(a1(1)) > max_acc || fabs(a1(2)) > max_acc) break;
-
-                    // cout << "vel feasible" << endl;
-
-                    // vel feasible
-                    Eigen::Vector3d v1 = x1.segment(3, 3), v0 = state.segment(3, 3), vm;
-                    if (fabs(v1(0)) > max_vel || fabs(v1(1)) > max_vel || fabs(v1(2)) > max_vel) break;
-                    for (int dim = 0; dim < 3; ++dim)
+                    if (nptr->occupancy > 0.5)
                     {
-                        double sym_axis = -a0(dim) / um(dim);
-                        if (sym_axis > 0.0 && sym_axis < max_tau)
-                        {
-                            vm(dim) = v0(dim) - 0.5 * a0(dim) * a0(dim) / um(dim);
-                            if (fabs(vm(0)) > max_vel || fabs(vm(1)) > max_vel || fabs(vm(2)) > max_vel) break;
-                        }
+                        // cout << "obstacle" << endl;
+                        break;
                     }
 
-                    // cout << "acc feasible" << endl;
+                    // vel feasible
+                    Eigen::Vector3d v1 = x1.segment(3, 3);
+                    if (fabs(v1(0)) > max_vel || fabs(v1(1)) > max_vel || fabs(v1(2)) > max_vel)
+                    {
+                        // cout << "vel end not feasible" << endl;
+                        break;
+                    }
 
                     // check if it is neighbor
                     Eigen::Vector3i diff = idx1 - current_node->index;
                     if (diff.norm() == 0) continue;
-
                     // cout << "neighbor:" << diff.transpose() << endl;
-
                     // caluculate f_score
                     double optimal_time;
                     KinoState candidate;
@@ -841,8 +823,8 @@ vector<Eigen::Vector3d> gridPathFinder::getKinoTraj(double resolution)
         xt = ptr->cameFrom->state;
         for (double t = duration; t >= -1e-3; t -= resolution)
         {
-            // stateTransit1(xt, xu, u, t);
-            jerkInputStateTransit(xt, xu, u, t);
+            stateTransit1(xt, xu, u, t);
+            // jerkInputStateTransit(xt, xu, u, t);
             // cout << "t:" << t << ", state:" << xu.head(3).transpose() << endl;
             state_list.push_back(xu.head(3));
         }

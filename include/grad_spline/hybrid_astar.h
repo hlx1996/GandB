@@ -19,9 +19,9 @@ class gridPathFinder
 {
   private:
     Eigen::MatrixXd phi;   // state transit matrix
-    double max_tau = 0.7;  // transition time
-    double max_vel = 2.5;
-    double max_acc = 3.1;
+    double max_tau = 0.3;  // transition time
+    double max_vel = 3.0;
+    double max_acc = 2.0;
     double max_jerk = 3.0;
 
     Eigen::Vector3d gridIndex2coord(Eigen::Vector3i index);
@@ -138,11 +138,10 @@ class gridPathFinder
         Z_SIZE = LOC_size(2);
 
         // state transit
-        phi.resize(9, 9);
-        phi.block(3, 0, 3, 3) = phi.block(6, 0, 3, 3) = phi.block(6, 3, 3, 3) = Eigen::MatrixXd::Zero(3, 3);
-        phi.block(0, 0, 3, 3) = phi.block(3, 3, 3, 3) = phi.block(6, 6, 3, 3) = Eigen::MatrixXd::Identity(3, 3);
-        phi.block(0, 3, 3, 3) = phi.block(3, 6, 3, 3) = Eigen::MatrixXd::Identity(3, 3);
-        phi.block(0, 6, 3, 3) = 0.5 * Eigen::MatrixXd::Identity(3, 3);
+        phi.resize(6, 6);
+        phi.block(3, 0, 3, 3) = Eigen::MatrixXd::Zero(3, 3);
+        phi.block(0, 0, 3, 3) = phi.block(3, 3, 3, 3) = Eigen::MatrixXd::Identity(3, 3);
+        phi.block(0, 3, 3, 3) = Eigen::MatrixXd::Identity(3, 3);
 
         // path publisher
         path_pub = node.advertise<visualization_msgs::Marker>("hybridastar/path", 10);

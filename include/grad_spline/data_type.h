@@ -146,7 +146,7 @@ struct GridNode
         id = 0;
         index = _index;
         coord = _coord;
-        state.resize(9);
+        state.resize(6);
         state.head(3) = _coord;
 
         gScore = inf;

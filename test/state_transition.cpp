@@ -122,7 +122,7 @@ int main(int argc, char** argv)
     double res = 1 / 2.0, time_res = 1 / 100.0;
 
     Eigen::VectorXd state(9);
-    state << 0, 0, 0, 1, 1, 0, 0, 0, 0;
+    state << 0, 0, 0, 2, 2, 0, 0, 0, 0;
     int id = 0;
 
     for (double jx = -max_jerk; jx <= max_jerk + 1e-3; jx += max_jerk * res)

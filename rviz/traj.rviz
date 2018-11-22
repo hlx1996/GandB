@@ -139,7 +139,7 @@ Visualization Manager:
       Marker Topic: /hybridastar/path
       Name: hybridastar
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -177,11 +177,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 86.1276245
+      Scale: 95.6822128
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: -0.925865591
-      Y: 0.311404228
+      X: 0.380872756
+      Y: -0.694324553
     Saved: ~
 Window Geometry:
   Displays:

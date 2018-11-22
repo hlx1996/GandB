@@ -62,7 +62,12 @@ We aim to solve the pose to pose planning problem. During the flying, the uav sh
 
 emmm...this does not work.. because you use a high order polynomial to fit a linear function and a piece-constant function. So the result is ill-conditioning. -->
 
-- using jerk as input in the path searching stage, and use the same time .
+<!-- - using jerk as input in the path searching stage, and use the same time 
+Use jerk as input is not a very good idea. The primitives is easy to drop into the same grid. We can solve this by
+enlarging the input jerk and time, but one step will be very long then. This can also be seen from the state transition function(x1 = x0 + v0*t + 0.5*t^2 + 0.16666*j*t^3 and jm*tm <= am), as we need the resulting state to scatter around, either j or t need to be larger. If t is larger, one step is longer.
+- Another solution is to lessen the grid size, but this 
+slow down the algorithm and need longer time to calculate distance field. -->
+
 - convert the monomial polynomial to b-spline
 - one shot can be improved
 
