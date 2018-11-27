@@ -68,14 +68,18 @@ enlarging the input jerk and time, but one step will be very long then. This can
 - Another solution is to lessen the grid size, but this 
 slow down the algorithm and need longer time to calculate distance field. -->
 
-- convert the monomial polynomial to b-spline
+- convert the monomial polynomial to b-spline, ok, this is very fast, ok 
+  <!-- - but it seems better to use equal distance samples instead of equal time samples, since equal time sample sometimes result in exceeding acceleration(why?). No!!! equal distance sample get very strange result  -->
+- consevativeness is a big issue. Maybe we should use lower order bspline so that the control point is closer to real value.
 - one shot can be improved
 
-
+w. burgard
 
 
  ### Plan
 
  - replace signed distance field using the sample function method
- - conversion between bybrid Astar trajectory and b-spline
+  - use ewok's code
+ - try 3 order b-spline
+ 
  - hybrid a star in sdf

@@ -41,3 +41,9 @@ target_link_libraries(astar ${catkin_LIBRARIES} ${PROJECT_SOURCE_DIR}/third_part
 # target_link_libraries(state_transit ${catkin_LIBRARIES})
 # add_executable(least_square test/least_square.cpp)
 # target_link_libraries(least_square ${catkin_LIBRARIES})
+
+# add_executable(equ test/solve_equation.cpp)
+# target_link_libraries(equ ${catkin_LIBRARIES})
+
+add_executable(sdf test/sdf.cpp)
+target_link_libraries(sdf ${catkin_LIBRARIES})

@@ -24,6 +24,8 @@ class gridPathFinder
     double max_acc = 2.0;
     double max_jerk = 3.0;
 
+    Eigen::Vector3d start_point, end_point;
+
     Eigen::Vector3d gridIndex2coord(Eigen::Vector3i index);
     Eigen::Vector3i coord2gridIndex(Eigen::Vector3d pt);
     GridNodePtr pos2gridNodePtr(Eigen::Vector3d pos);
@@ -163,7 +165,8 @@ class gridPathFinder
     std::vector<GridNodePtr> getVisitedNodes();
     std::vector<GridNodePtr> getPathNodes();
     std::vector<Eigen::Vector3d> getKinoTraj(double resolution);
-    Eigen::MatrixXd getSamples(double& ts, int& K, int N);
+    Eigen::MatrixXd getSamples(double& ts, int& K, int N = 1, bool repeat = false);
+    Eigen::MatrixXd getSamplesUniformLength(double ds, double& ts, int& K);
 
     // shot
     bool is_shot_succ = false;

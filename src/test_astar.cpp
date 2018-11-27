@@ -52,7 +52,7 @@ int main(int argc, char** argv)
         Eigen::Vector3d start, end;
         start(0) = start(1) = -4.0 + 1e-3;
         end(0) = 4.0 + 1e-3;
-        end(1) = 0.0 + 1e-3;
+        end(1) = 4.0 + 1e-3;
         start(2) = end(2) = 2.0 + 1e-3;
 
         // add a obstacle near start
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
         // now we can do the path searching, get the path and visited node
         Eigen::Vector3d sv, ev;
         sv << 0.0, 1.5, 0.0;
-        ev << 0.5, 0.2, 0.0;
+        ev << 1.5, 2.0, 0.0;
         path_finder->AstarSearch(start, sv, end, ev);
         // vector<Eigen::Vector3d> path = path_finder->getPath();
         vector<GridNodePtr> path_nodes = path_finder->getPathNodes();
@@ -144,49 +144,141 @@ int main(int argc, char** argv)
         vector<Eigen::Vector3d> start_end;
         start_end.push_back(start);
         start_end.push_back(end);
-        displayPathWithColor(start_end, 0.15, 2, 2);
+        // displayPathWithColor(start_end, 0.15, 2, 2);
 
         delete collision_map;
 
-        // // convert the path into b-spline using least square, N = 4,ts = 0.5
-        // ros::Time t1 = ros::Time::now();
+        // convert the path into b-spline using least square, N = 4,ts = 0.5
+        ros::Time t1 = ros::Time::now();
 
-        // int N = 4, K;
-        // double ts = 0.1;
+        int K;
+        double ts = 0.10;
+        // get sample
+        Eigen::MatrixXd samples = path_finder->getSamples(ts, K);
+        // Eigen::MatrixXd samples = path_finder->getSamplesUniformLength(ds, ts, K);
 
-        // Eigen::MatrixXd samples = path_finder->getSamples(ts, K, N);
+        ros::Time t2 = ros::Time::now();
+        cout << "time in get samples:" << (t2 - t1).toSec() << endl;
 
-        // Eigen::MatrixXd control_pts;
+        vector<Eigen::Vector3d> v_sample;
+        for (int i = 0; i < int(samples.cols()); ++i)
+        {
+            Eigen::Vector3d sample = samples.block(0, i, 3, 1);
+            v_sample.push_back(sample);
+        }
+        displayPathWithColor(v_sample, 0.1, 4, 3);
+
+        // convert to b-spline
+        t1 = ros::Time::now();
+
+        Eigen::MatrixXd control_pts;
+        Eigen::MatrixXd extend_samples;
+        extend_samples.resize(3, K + 6);
+        extend_samples.block(0, 0, 3, K + 2) = samples;
+        extend_samples.col(K + 2) = sv;
+        extend_samples.col(K + 3) = ev;
+        extend_samples.col(K + 4) = Eigen::Vector3d::Zero();
+        extend_samples.col(K + 5) = Eigen::Vector3d::Zero();
+        getControlPointEqu(extend_samples, ts, control_pts);
         // getControlPointLeastSquare(K, N, ts, samples.block(1, 0, 3, (N + 1) * (K + 1)), control_pts);
 
-        // ros::Time t2 = ros::Time::now();
-        // cout << "least square time:" << (t2 - t1).toSec() << endl;
+        t2 = ros::Time::now();
+        cout << "time in Ax=b:" << (t2 - t1).toSec() << endl;
 
-        // // draw the bspline
-        // UniformBspline bspline(control_pts, 5, ts, false);
-        // vector<Eigen::Vector3d> path_bspline;
-        // double total_t = ts * (K + 1);
-        // for (double t = 0.0; t <= total_t; t += 0.02)
-        // {
-        //     Eigen::Vector3d pt = bspline.evaluate(t);
-        //     path_bspline.push_back(pt);
-        // }
-        // displayPathWithColor(path_bspline, 0.05, 3, 3);
+        // find the feasible ts
+        t1 = ros::Time::now();
+        while (true)
+        {
+            // get control point of vel acc
+            UniformBspline bspline(control_pts, 5, ts, false);
+            UniformBspline vt = bspline.getDerivative();
+            UniformBspline at = vt.getDerivative();
 
-        // // draw the control point
-        // vector<Eigen::Vector3d> ctp;
-        // for (int i = 0; i < int(control_pts.rows()); ++i)
-        // {
-        //     Eigen::Vector3d pt = control_pts.row(i).transpose();
-        //     ctp.push_back(pt);
-        // }
-        // displayPathWithColor(ctp, 0.15, 4, 4);
-        // cout << "control pt num:" << ctp.size() << endl;
+            Eigen::MatrixXd vc, ac;
+            vc = vt.getControlPoint();
+            ac = at.getControlPoint();
 
-        // // draw the first and last segment control point
-        // ctp.erase(ctp.begin() + 6, ctp.end() - 6);
-        // displayPathWithColor(ctp, 0.25, 5, 1);
-        // cout << "cut pt num:" << ctp.size() << endl;
+            bool feasible = true;
+
+            // check vel
+            for (int i = 0; i < int(vc.rows()); ++i)
+            {
+                Eigen::Vector3d vci = vc.row(i);
+                double v_max = max(fabs(vci(0)), fabs(vci(1)));
+                v_max = max(fabs(vci(2)), v_max);
+
+                if (v_max > 5.0)
+                {
+                    ts *= 1.1;
+                    feasible = false;
+                    break;
+                }
+            }
+            if (!feasible) continue;
+
+            // check acc
+            for (int i = 0; i < int(ac.rows()); ++i)
+            {
+                Eigen::Vector3d aci = ac.row(i);
+                double a_max = max(fabs(aci(0)), fabs(aci(1)));
+                a_max = max(fabs(aci(2)), a_max);
+
+                if (a_max > 5.0)
+                {
+                    ts *= 1.1;
+                    feasible = false;
+                    break;
+                }
+            }
+            if (!feasible) continue;
+
+            break;
+        }
+        cout << "new ts:" << ts << ", total time:" << (K + 1) * ts << endl;
+
+        t2 = ros::Time::now();
+
+        // draw the bspline
+        UniformBspline bspline(control_pts, 5, ts, false);
+        vector<Eigen::Vector3d> path_bspline;
+        double total_t = ts * (K + 1);
+        for (double t = 0.0; t <= total_t; t += 0.02)
+        {
+            Eigen::Vector3d pt = bspline.evaluate(t);
+            path_bspline.push_back(pt);
+        }
+        displayPathWithColor(path_bspline, 0.05, 3, 3);
+
+        // draw the control point
+        vector<Eigen::Vector3d> ctp;
+        for (int i = 0; i < int(control_pts.rows()); ++i)
+        {
+            Eigen::Vector3d pt = control_pts.row(i).transpose();
+            ctp.push_back(pt);
+        }
+        displayPathWithColor(ctp, 0.15, 4, 4);
+        cout << "control pt num:" << ctp.size() << endl;
+
+        // draw the first and last segment control point
+        ctp.erase(ctp.begin() + 6, ctp.end() - 6);
+        displayPathWithColor(ctp, 0.25, 5, 1);
+
+        // draw the vel and acc of b-spline
+        UniformBspline velspline = bspline.getDerivative();
+        UniformBspline accspline = velspline.getDerivative();
+        vector<Eigen::Vector3d> vels, accs;
+        for (double t = 0.0; t <= total_t; t += 0.01)
+        {
+            Eigen::Vector3d vt = velspline.evaluate(t);
+            Eigen::Vector3d at = accspline.evaluate(t);
+            vels.push_back(vt);
+            accs.push_back(at);
+
+            if (fabs(vt(0)) > 3.0 || fabs(vt(1)) > 3.0 || fabs(vt(2)) > 3.0) cout << "vel outside" << endl;
+            if (fabs(at(0)) > 3.0 || fabs(at(1)) > 3.0 || fabs(at(2)) > 3.0) cout << "acc outside" << endl;
+        }
+        displayPathWithColor(vels, 0.1, 2, 5);
+        displayPathWithColor(accs, 0.1, 3, 6);
 
         // clear path finder
         path_finder->resetLocalMap();

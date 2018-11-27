@@ -211,6 +211,9 @@ void gridPathFinder::AstarSearch(Vector3d start_pt, Vector3d start_vel, Vector3d
     ros::Time time_1 = ros::Time::now();
     double vis_time = 0.0;
 
+    start_point = start_pt;
+    end_point = end_pt;
+
     Vector3i start_idx = coord2gridIndex(start_pt);
     Vector3i end_idx = coord2gridIndex(end_pt);
 
@@ -257,7 +260,7 @@ void gridPathFinder::AstarSearch(Vector3d start_pt, Vector3d start_vel, Vector3d
             abs(current_node->index(2) - endPtr->index(2)) <= difference)
         {
             // the final distance is reached using one shot
-            // shotHeu(current_node, endPtr)
+            shotHeu(current_node, endPtr);
             ROS_WARN("[hybrid Astar]Reach goal..");
             // cout << "goal coord: " << endl << current_node->real_coord << endl;
             cout << "total number of iteration used in hybrid Astar: " << num_iter << endl;
@@ -867,9 +870,10 @@ vector<Eigen::Vector3d> gridPathFinder::getKinoTraj(double resolution)
     return state_list;
 }
 
+// This function return samples in uniform time interval
 // input: ts', N(sample num)
 // output: ts,  mat of 4 x (K+1)*(N+1) and each row for t, x, y, z
-Eigen::MatrixXd gridPathFinder::getSamples(double& ts, int& K, int N)
+Eigen::MatrixXd gridPathFinder::getSamples(double& ts, int& K, int N, bool repeat)
 {
     Eigen::MatrixXd samples;
 
@@ -882,7 +886,6 @@ Eigen::MatrixXd gridPathFinder::getSamples(double& ts, int& K, int N)
 
     // cal the accumulated time of the path
     double T = t_shot;
-
     while (ptr->cameFrom != NULL)
     {
         T += ptr->duration;
@@ -896,12 +899,24 @@ Eigen::MatrixXd gridPathFinder::getSamples(double& ts, int& K, int N)
     ts = T / (K + 1);
     double tm = ts / N;
 
-    cout << "K:" << K << ", N:" << N << ", ts:" << ts << endl;
+    cout << "K:" << K << ", N:" << N << ", ts:" << ts << ", tm:" << tm << endl;
 
     // get samples
     bool in_shot = true;
     int Nt = 0;
-    Eigen::VectorXd st((N + 1) * (K + 1)), sx((N + 1) * (K + 1)), sy((N + 1) * (K + 1)), sz((N + 1) * (K + 1));
+    Eigen::VectorXd sx, sy, sz;
+    if (repeat)
+    {
+        sx.resize((N + 1) * (K + 1));
+        sy.resize((N + 1) * (K + 1));
+        sz.resize((N + 1) * (K + 1));
+    }
+    else
+    {
+        sx.resize(K + 2);
+        sy.resize(K + 2);
+        sz.resize(K + 2);
+    }
     double T_accumulate = T, t = t_shot;
 
     while (true)
@@ -920,16 +935,14 @@ Eigen::MatrixXd gridPathFinder::getSamples(double& ts, int& K, int N)
                 coord(dim) = poly1d.dot(tv);
             }
 
-            st(Nt) = T_accumulate;
             sx(Nt) = coord(0);
             sy(Nt) = coord(1);
             sz(Nt) = coord(2);
             ++Nt;
 
             // segment connecting point must be added twice
-            if (Nt % (N + 1) == 0 && Nt != (K + 1) * (N + 1))
+            if (repeat && Nt % (N + 1) == 0 && Nt != (K + 1) * (N + 1))
             {
-                st(Nt) = T_accumulate;
                 sx(Nt) = coord(0);
                 sy(Nt) = coord(1);
                 sz(Nt) = coord(2);
@@ -954,16 +967,14 @@ Eigen::MatrixXd gridPathFinder::getSamples(double& ts, int& K, int N)
             Eigen::VectorXd xt = ptr->cameFrom->state;
             stateTransit1(xt, xu, u, t);
 
-            st(Nt) = T_accumulate;
             sx(Nt) = xu(0);
             sy(Nt) = xu(1);
             sz(Nt) = xu(2);
             ++Nt;
 
             // segment connecting point must be added twice
-            if (Nt % (N + 1) == 0 && Nt != (K + 1) * (N + 1))
+            if (repeat && Nt % (N + 1) == 0 && Nt != (K + 1) * (N + 1))
             {
-                st(Nt) = T_accumulate;
                 sx(Nt) = xu(0);
                 sy(Nt) = xu(1);
                 sz(Nt) = xu(2);
@@ -978,11 +989,13 @@ Eigen::MatrixXd gridPathFinder::getSamples(double& ts, int& K, int N)
             {
                 if (ptr->cameFrom->cameFrom == NULL)  // reach the first node, finish all samples
                 {
-                    samples.resize(4, (K + 1) * (N + 1));
-                    samples.row(0) = st.reverse();
-                    samples.row(1) = sx.reverse();
-                    samples.row(2) = sy.reverse();
-                    samples.row(3) = sz.reverse();
+                    if (repeat)
+                        samples.resize(3, (K + 1) * (N + 1));
+                    else
+                        samples.resize(3, K + 2);
+                    samples.row(0) = sx.reverse();
+                    samples.row(1) = sy.reverse();
+                    samples.row(2) = sz.reverse();
 
                     return samples;
                 }
@@ -991,6 +1004,154 @@ Eigen::MatrixXd gridPathFinder::getSamples(double& ts, int& K, int N)
                     ptr = ptr->cameFrom;
                     t += ptr->duration;
                 }
+            }
+        }
+    }
+}
+
+// get uniform length sample points
+// input : ds
+// output : 3 x ? matrix, time interval ts
+Eigen::MatrixXd gridPathFinder::getSamplesUniformLength(double ds, double& ts, int& K)
+{
+    Eigen::MatrixXd samples;
+
+    GridNodePtr ptr = terminate_ptr;
+    if (ptr == NULL)
+    {
+        cout << "no path found, return null sample" << endl;
+        return samples;
+    }
+
+    // cal the accumulated time of the path
+    double T = t_shot;
+    while (ptr->cameFrom != NULL)
+    {
+        T += ptr->duration;
+        ptr = ptr->cameFrom;
+    }
+    cout << "accumulated time:" << T << endl;
+
+    // get samples
+    double delta_t = 0.02;
+    bool in_shot = true;
+    int Nt = 0;
+    // Eigen::VectorXd sx, sy, sz;
+    vector<Eigen::Vector3d> sxyz;
+    double T_accumulate = T, t = t_shot;
+    double d_accumulate = 0.0;
+    Eigen::Vector3d last_point = end_point;
+
+    sxyz.push_back(end_point);
+    ++Nt;
+
+    while (true)
+    {
+        if (in_shot)  // get sample in one shot
+        {
+            // cal one shot coordinate
+            Vector3d coord;
+            VectorXd poly1d, tv;
+            for (int dim = 0; dim < 3; dim++)
+            {
+                poly1d = coef_shot.row(dim);
+                tv = VectorXd::Zero(4);
+                for (int j = 0; j < 4; j++) tv(j) = pow(t, j);
+                coord(dim) = poly1d.dot(tv);
+            }
+
+            // cal accumulated length
+            d_accumulate += (coord - last_point).norm();
+            last_point = coord;
+
+            // sample at equal length ds
+            if (d_accumulate >= ds)
+            {
+                // cout << "t:" << t << endl;
+                // cout << "Nt1:" << Nt << endl;
+                // cout << "d accumulate:" << d_accumulate << endl;
+                sxyz.push_back(coord);
+                ++Nt;
+                d_accumulate -= ds;
+            }
+
+            // move to next time
+            t -= delta_t;
+            T_accumulate -= delta_t;
+
+            if (t < -1e-5)  // outside the range of path segment
+            {
+                in_shot = false;
+                ptr = terminate_ptr;
+                t += ptr->duration;
+            }
+        }
+        else  // sample in normal path
+        {
+            // cal coordinate of normal path
+            Eigen::VectorXd xu;
+            Vector3d u = ptr->input;
+            Eigen::VectorXd xt = ptr->cameFrom->state;
+            stateTransit1(xt, xu, u, t);
+
+            // cal accumulate ds
+            d_accumulate += (xu.head(3) - last_point).norm();
+            last_point = xu.head(3);
+
+            // sample in same length
+            if (d_accumulate > ds)
+            {
+                // cout << "t:" << t << endl;
+                // cout << "Nt2:" << Nt << endl;
+                // cout << "d accumulate:" << d_accumulate << endl;
+                sxyz.push_back(xu.head(3));
+                ++Nt;
+                d_accumulate -= ds;
+
+                // judge if reach start points
+                double dist_to_start = (start_point - xu.head(3)).norm();
+                if (dist_to_start < ds)
+                {
+                    cout << "distance to start:" << dist_to_start << endl;
+                    sxyz.push_back(start_point);
+                    ++Nt;
+
+                    cout << "Nt:" << Nt << ", sxyz:" << sxyz.size() << endl;
+
+                    // return sample
+                    samples.resize(3, Nt);
+                    for (int i = 0; i < int(sxyz.size()); ++i) samples.col(i) = sxyz[Nt - 1 - i];
+
+                    K = Nt - 2;
+                    ts = T / (K + 1);
+                    cout << "K:" << K << endl;
+                    return samples;
+                }
+            }
+
+            // move to next sample
+            t -= delta_t;
+            T_accumulate -= delta_t;
+            if (t < -1e-5)  // outside the range of path segment
+            {
+                if (ptr->cameFrom->cameFrom == NULL)
+                {
+                    sxyz.push_back(start_point);
+                    ++Nt;
+
+                    cout << "Nt:" << Nt << ", sxyz:" << sxyz.size() << endl;
+
+                    // return sample
+                    samples.resize(3, Nt);
+                    for (int i = 0; i < int(sxyz.size()); ++i) samples.col(i) = sxyz[Nt - 1 - i];
+
+                    K = Nt - 2;
+                    ts = T / (K + 1);
+                    cout << "K:" << K << endl;
+                    return samples;
+                }
+                ptr = ptr->cameFrom;
+                t += ptr->duration;
             }
         }
     }

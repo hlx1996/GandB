@@ -38,9 +38,25 @@ def main():
     sp.pprint(diff)
 
 
+def cal():
+    m1 = np.matrix([[1, 11, 11, 1]])
+    m2 = np.matrix([[-1, 1, 0, 0, 0], [0, -1, 1, 0, 0], [0, 0, -1, 1, 0], [0, 0, 0, -1, 1]])
 
+    print m1
+    print m2
+
+    print m1 * m2
+
+    m1 = np.matrix([[1, 4, 1]])
+    m2 = np.matrix([[1, -2, 1, 0, 0], [0, 1, -2, 1, 0], [0, 0, 1, -2, 1]])
+
+    print m1
+    print m2
+
+    print m1 * m2
     
 
 if __name__ == '__main__':
-    main()
+    # main()
+    cal()
 

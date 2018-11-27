@@ -5,6 +5,53 @@
 #include <iostream>
 using namespace std;
 
+// input :
+//      sample : 3 x (K+6) for x, y, z sample
+//      ts
+// output:
+//      control_pts (K+6)x3
+void getControlPointEqu(Eigen::MatrixXd samples, double ts, Eigen::MatrixXd& control_pts)
+{
+    int K = samples.cols() - 6;
+
+    // write A
+    Eigen::VectorXd prow(5), vrow(5), arow(5);
+    prow << 1, 26, 66, 26, 1;
+    vrow << -1, -10, 0, 10, 1;
+    arow << 1, 2, -6, 2, 1;
+
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(K + 6, K + 6);
+
+    for (int i = 0; i < K + 2; ++i) A.block(i, i, 1, 5) = prow.transpose();
+    A.block(0, 0, K + 2, K + 6) = (1 / 120.0) * A.block(0, 0, K + 2, K + 6);
+
+    A.block(K + 2, 0, 1, 5) = A.block(K + 3, K + 1, 1, 5) = vrow.transpose();
+    A.block(K + 2, 0, 2, K + 6) = (1 / 24.0 / ts) * A.block(K + 2, 0, 2, K + 6);
+
+    A.block(K + 4, 0, 1, 5) = A.block(K + 5, K + 1, 1, 5) = arow.transpose();
+    A.block(K + 4, 0, 2, K + 6) = (1 / 6.0 / ts / ts) * A.block(K + 4, 0, 2, K + 6);
+
+    // write b
+    Eigen::VectorXd bx(K + 6), by(K + 6), bz(K + 6);
+    for (int i = 0; i < K + 6; ++i)
+    {
+        bx(i) = samples(0, i);
+        by(i) = samples(1, i);
+        bz(i) = samples(2, i);
+    }
+
+    // solve Ax = b
+    Eigen::VectorXd px = A.colPivHouseholderQr().solve(bx);
+    Eigen::VectorXd py = A.colPivHouseholderQr().solve(by);
+    Eigen::VectorXd pz = A.colPivHouseholderQr().solve(bz);
+
+    // convert to control pts
+    control_pts.resize(K + 6, 3);
+    control_pts.col(0) = px;
+    control_pts.col(1) = py;
+    control_pts.col(2) = pz;
+}
+
 // input: K: segment, N: sample num, ts: segment time, samples 3x(K+1)*(N+1)
 // output: control_pts of b-spline: (K+6)x3
 void getControlPointLeastSquare(int K, int N, double ts, Eigen::MatrixXd samples, Eigen::MatrixXd& control_pts)
@@ -61,6 +108,11 @@ class UniformBspline
     UniformBspline(Eigen::MatrixXd points, int order, double interval, bool auto_extend = true);
     ~UniformBspline();
 
+    Eigen::MatrixXd getControlPoint()
+    {
+        return control_points;
+    }
+
     void getRegion(double& um, double& um_p);
 
     Eigen::Vector3d evaluate(double u);
@@ -110,7 +162,7 @@ UniformBspline::UniformBspline(Eigen::MatrixXd points, int order, double interva
             this->u(i) = this->u(i - 1) + this->interval;
         }
     }
-    
+
     // initialize the M3-6 matrix
     this->M.resize(4);
     Eigen::MatrixXd M3 = Eigen::MatrixXd::Zero(3, 3);

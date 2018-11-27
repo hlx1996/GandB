@@ -25,6 +25,12 @@ def main():
         uv = np.matrix([1., u, u**2, u**3, u**4, u**5])
         print uv * M6 * pv
 
+        u = 0.5
+        uv = np.matrix([1., u, u**2, u**3, u**4, u**5])
+        print uv * M6 * pv
+
+
+
     # s = sp.symbols("s")
     # # t = sp.symbols("T")
     # t = 1/s
